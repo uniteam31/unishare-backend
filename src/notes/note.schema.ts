@@ -1,19 +1,24 @@
 import { Prop, SchemaFactory, Schema } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 
 /** HydratedDocument используется для типизации документов, которые возвращаются из базы данных.
  * Это типизированный объект, который включает в себя все методы Mongoose,
- * такие как save(), remove() и т.д.
+ * такие, как save(), remove() и т.д.
  * */
 export type NoteDocument = HydratedDocument<Note>;
 
+export type NoteCreator = {
+	id: Types.ObjectId;
+};
+
 @Schema()
 export class Note {
-	@Prop()
-	id: number;
-
-	@Prop()
-	author: string;
+	/** Поле, представляющее связь с пользователем */
+	@Prop({
+		type: Object, // Указываем, что это вложенный объект
+		required: true,
+	})
+	creator: NoteCreator; // Используем определённый интерфейс для типизации
 
 	@Prop()
 	title: string;
