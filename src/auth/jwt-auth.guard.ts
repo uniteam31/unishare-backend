@@ -22,7 +22,7 @@ export class JwtAuthGuard implements CanActivate {
 				throw new UnauthorizedException({ message: 'Пользователь не авторизован' });
 			}
 
-			/** Расшифровываю информацию из jwt токена. Пока что там только email */
+			/** Расшифровываю информацию из jwt токена */
 			const decodedToken = this.jwtService.verify<TJwtPayload>(token);
 
 			/** Кладу информацию для работы с endpoints в поле user */

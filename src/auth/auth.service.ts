@@ -5,6 +5,7 @@ import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { User } from '../users/user.schema';
+import { Types } from 'mongoose';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +13,11 @@ export class AuthService {
 		private usersService: UsersService,
 		private jwtService: JwtService,
 	) {}
+
+	async init(userID: Types.ObjectId): Promise<{ name: string }> {
+		const user = await this.usersService.getUserByID(userID);
+		return { name: user.name };
+	}
 
 	async login(userDto: LoginDto) {
 		const user = await this.validateUser(userDto);
