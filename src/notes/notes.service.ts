@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Note } from './note.schema';
 import { CreateNoteDto } from './dto/create-note-dto';
+import { UpdateNoteDto } from './dto/update-note-dto';
 
 @Injectable()
 export class NotesService {
@@ -22,6 +23,42 @@ export class NotesService {
 	}
 
 	async getUserNotes(userID: Types.ObjectId): Promise<Note[]> {
-		return this.noteModel.find({ creator: { id: userID } }).exec();
+		return this.noteModel
+			.find({ creator: { id: userID } })
+			.sort({ date: -1 })
+			.exec();
+	}
+
+	async updateUserNote(
+		noteID: Types.ObjectId,
+		userID: Types.ObjectId,
+		updateNoteDto: UpdateNoteDto,
+	) {
+		const updatedNote = await this.noteModel.findOneAndUpdate(
+			{ _id: noteID, creator: { id: userID } },
+			{ $set: updateNoteDto },
+			{ new: true },
+		);
+
+		if (!updatedNote) {
+			throw new NotFoundException(
+				'Заметка не найдена или у вас нет прав для ее редактирования',
+			);
+		}
+
+		return updatedNote;
+	}
+
+	async deleteUserNote(noteID: Types.ObjectId, userID: Types.ObjectId) {
+		const deletedNote = await this.noteModel.findOneAndDelete({
+			_id: noteID,
+			creator: { id: userID },
+		});
+
+		if (!deletedNote) {
+			throw new NotFoundException('Заметка не найдена или у вас нет прав для ее удаления');
+		}
+
+		return { message: 'Удалено' };
 	}
 }
