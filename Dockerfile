@@ -1,9 +1,8 @@
-# При деплое ОБЯЗАТЕЛЬНО указывать все ENV через Jenkins
+FROM node
 
+# При деплое ОБЯЗАТЕЛЬНО указывать все ENV через Jenkins
 # Ставится в pipeline на Jenkins
 ARG BRANCH=dev
-
-FROM node
 
 RUN apt -yqq update \
     && apt -yqq install git curl nginx \
