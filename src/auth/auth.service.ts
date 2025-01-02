@@ -14,9 +14,9 @@ export class AuthService {
 		private jwtService: JwtService,
 	) {}
 
-	async init(userID: Types.ObjectId): Promise<{ name: string }> {
+	async init(userID: Types.ObjectId): Promise<{ firstName: string }> {
 		const user = await this.usersService.getUserByID(userID);
-		return { name: user.name };
+		return { firstName: user.firstName };
 	}
 
 	async login(userDto: LoginDto) {
@@ -26,7 +26,7 @@ export class AuthService {
 
 	async registration(userDto: CreateUserDto) {
 		const isEmailExist = await this.usersService.getUserByEmail(userDto.email);
-		const isNicknameExist = await this.usersService.getUserByNickname(userDto.nickname);
+		const isUsernameExist = await this.usersService.getUserByUsername(userDto.username);
 
 		if (isEmailExist) {
 			throw new HttpException(
@@ -35,9 +35,9 @@ export class AuthService {
 			);
 		}
 
-		if (isNicknameExist) {
+		if (isUsernameExist) {
 			throw new HttpException(
-				'Пользователь с таким nickname уже существует',
+				'Пользователь с таким username уже существует',
 				HttpStatus.BAD_REQUEST,
 			);
 		}
