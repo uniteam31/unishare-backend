@@ -10,33 +10,34 @@ export class NotesService {
 	constructor(@InjectModel(Note.name) private noteModel: Model<Note>) {}
 
 	// TODO в будущем всегда ставить принадлежность ноды для конкретной группы
-	async createNote(createNoteDto: CreateNoteDto, creatorID: Types.ObjectId): Promise<Note> {
-		const date = new Date().toISOString();
+	async createNote(createNoteDto: CreateNoteDto, ownerID: Types.ObjectId): Promise<Note> {
+		const createdAt = new Date().toISOString();
+		const updatedAt = createdAt;
 
 		const createdNote = new this.noteModel({
 			...createNoteDto,
-			date,
-			creator: { id: creatorID },
+			createdAt,
+			updatedAt,
+			ownerID,
 		});
 
 		return createdNote.save();
 	}
 
-	async getUserNotes(userID: Types.ObjectId): Promise<Note[]> {
-		return this.noteModel
-			.find({ creator: { id: userID } })
-			.sort({ date: -1 })
-			.exec();
+	async getUserNotes(ownerID: Types.ObjectId): Promise<Note[]> {
+		return this.noteModel.find({ ownerID }).sort({ date: -1 }).exec();
 	}
 
 	async updateUserNote(
 		noteID: Types.ObjectId,
-		userID: Types.ObjectId,
+		ownerID: Types.ObjectId,
 		updateNoteDto: UpdateNoteDto,
 	) {
+		const updatedAt = new Date().toISOString();
+
 		const updatedNote = await this.noteModel.findOneAndUpdate(
-			{ _id: noteID, creator: { id: userID } },
-			{ $set: updateNoteDto },
+			{ _id: noteID, ownerID },
+			{ $set: { ...updateNoteDto, updatedAt } },
 			{ new: true },
 		);
 
@@ -49,10 +50,10 @@ export class NotesService {
 		return updatedNote;
 	}
 
-	async deleteUserNote(noteID: Types.ObjectId, userID: Types.ObjectId) {
+	async deleteUserNote(noteID: Types.ObjectId, ownerID: Types.ObjectId) {
 		const deletedNote = await this.noteModel.findOneAndDelete({
 			_id: noteID,
-			creator: { id: userID },
+			ownerID,
 		});
 
 		if (!deletedNote) {

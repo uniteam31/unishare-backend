@@ -23,16 +23,16 @@ export class NotesController {
 
 	@Post()
 	createNote(@Body() createNoteDto: CreateNoteDto, @Request() req: IAuthenticatedRequest) {
-		const creatorID = req.user._id;
+		const ownerID = req.user._id;
 
-		return this.notesService.createNote(createNoteDto, creatorID);
+		return this.notesService.createNote(createNoteDto, ownerID);
 	}
 
 	@Get()
 	getUserNotes(@Request() req: IAuthenticatedRequest) {
-		const userID = req.user._id;
+		const ownerID = req.user._id;
 
-		return this.notesService.getUserNotes(userID);
+		return this.notesService.getUserNotes(ownerID);
 	}
 
 	@Put(':id')
@@ -41,15 +41,15 @@ export class NotesController {
 		@Body() updateNoteDto: UpdateNoteDto,
 		@Request() req: IAuthenticatedRequest,
 	) {
-		const userID = req.user._id;
+		const ownerID = req.user._id;
 
-		return this.notesService.updateUserNote(noteID, userID, updateNoteDto);
+		return this.notesService.updateUserNote(noteID, ownerID, updateNoteDto);
 	}
 
 	@Delete(':id')
 	deleteUserNote(@Param('id') noteID: Types.ObjectId, @Request() req: IAuthenticatedRequest) {
-		const userID = req.user._id;
+		const ownerID = req.user._id;
 
-		return this.notesService.deleteUserNote(noteID, userID);
+		return this.notesService.deleteUserNote(noteID, ownerID);
 	}
 }
