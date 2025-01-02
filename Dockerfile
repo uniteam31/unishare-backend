@@ -1,3 +1,8 @@
+# При деплое ОБЯЗАТЕЛЬНО указывать все ENV через Jenkins
+
+# Ставится в pipeline на Jenkins
+ARG BRANCH=dev
+
 FROM node
 
 RUN apt -yqq update \
@@ -13,8 +18,6 @@ RUN corepack enable
 RUN yarn init -2
 
 # CHECKOUT
-# Задается через ENV
-ARG BRANCH=dev
 RUN git clone https://github.com/uniteam31/unishare-backend.git
 WORKDIR /unishare-backend
 RUN git fetch --all
