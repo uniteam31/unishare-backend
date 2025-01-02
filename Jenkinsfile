@@ -74,6 +74,14 @@ pipeline {
             echo 'Pipeline завершился с ошибкой.'
         }
         always {
+            script {
+                if (app) {
+                    echo "Cleaning up Docker image ${DOCKER_IMAGE_NAME}"
+                    sh "docker rmi ${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER} || true"
+                    sh "docker rmi ${DOCKER_IMAGE_NAME}:latest || true"
+                }
+            }
+
             cleanWs()
         }
     }
