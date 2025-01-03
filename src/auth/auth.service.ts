@@ -14,9 +14,9 @@ export class AuthService {
 		private jwtService: JwtService,
 	) {}
 
-	async init(userID: Types.ObjectId): Promise<{ firstName: string }> {
+	async init(userID: Types.ObjectId): Promise<{ firstName: string; username: string }> {
 		const user = await this.usersService.getUserByID(userID);
-		return { firstName: user.firstName };
+		return { firstName: user.firstName, username: user.username };
 	}
 
 	async login(userDto: LoginDto) {
