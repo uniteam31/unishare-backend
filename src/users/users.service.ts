@@ -13,7 +13,6 @@ export class UsersService {
 		/** здесь exec() не нужен, потому что мы уже знаем, что выполняем асинхронную
 		 * операцию
 		 * */
-
 		return createdUser.save();
 	}
 
@@ -26,8 +25,8 @@ export class UsersService {
 		return this.userModel.findOne({ email }).exec();
 	}
 
-	async getUserByNickname(nickname: string) {
-		return this.userModel.findOne({ nickname }).exec();
+	async getUserByUsername(username: string) {
+		return this.userModel.findOne({ username }).exec();
 	}
 
 	async getUserByID(id: Types.ObjectId) {

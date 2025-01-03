@@ -18,10 +18,10 @@ export class User {
 	password: string;
 
 	@Prop()
-	name: string;
+	firstName: string;
 
 	@Prop({ required: true, unique: true })
-	nickname: string;
+	username: string;
 }
 
 /** Основная схема */
