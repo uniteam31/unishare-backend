@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { LoginDto } from './dto/login-dto';
 import { CreateUserDto } from '../users/dto/create-user-dto';
 import { UsersService } from '../users/users.service';
@@ -21,7 +21,12 @@ export class AuthService {
 
 	async login(userDto: LoginDto) {
 		const user = await this.validateUser(userDto);
-		return this.generateToken(user);
+		const token = await this.generateToken(user);
+
+		return {
+			data: token,
+			message: 'Успешная авторизация',
+		};
 	}
 
 	async registration(userDto: CreateUserDto) {
@@ -45,25 +50,33 @@ export class AuthService {
 		const hashPassword = await bcrypt.hash(userDto.password, 5);
 		const user = await this.usersService.createUser({ ...userDto, password: hashPassword });
 
-		return this.generateToken(user);
+		const token = await this.generateToken(user);
+
+		return {
+			data: token,
+			message: 'Успешная регистрация',
+		};
 	}
 
 	private async generateToken(user: User) {
 		const payload = { _id: user._id };
 
-		return {
-			token: this.jwtService.sign(payload),
-		};
+		return this.jwtService.sign(payload);
 	}
 
 	private async validateUser(userDto: LoginDto) {
 		const user = await this.usersService.getUserByEmail(userDto.email);
+
+		if (!user) {
+			throw new BadRequestException({ message: 'Не удается найти такого пользователя' });
+		}
+
 		const isPasswordEquals = await bcrypt.compare(userDto.password, user.password);
 
 		if (user && isPasswordEquals) {
 			return user;
 		}
 
-		throw new UnauthorizedException({ message: 'Некорректный email или пароль' });
+		throw new BadRequestException({ message: 'Некорректный email или пароль' });
 	}
 }
