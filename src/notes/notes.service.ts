@@ -25,7 +25,7 @@ export class NotesService {
 	}
 
 	async getUserNotes(ownerID: Types.ObjectId): Promise<Note[]> {
-		return this.noteModel.find({ ownerID }).sort({ date: -1 }).exec();
+		return this.noteModel.find({ ownerID }).sort({ createdAt: -1 }).exec();
 	}
 
 	async updateUserNote(
