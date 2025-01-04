@@ -6,6 +6,13 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { User } from '../users/user.schema';
 import { Types } from 'mongoose';
+import { ApiResponse } from '../common/utils/response.type';
+import { formatResponse } from '../common/utils/response.util';
+
+type TUserInitialData = {
+	firstName: User['firstName'];
+	username: User['username'];
+};
 
 @Injectable()
 export class AuthService {
@@ -14,22 +21,22 @@ export class AuthService {
 		private jwtService: JwtService,
 	) {}
 
-	async init(userID: Types.ObjectId): Promise<{ firstName: string; username: string }> {
+	async init(userID: Types.ObjectId): Promise<ApiResponse<TUserInitialData>> {
 		const user = await this.usersService.getUserByID(userID);
-		return { firstName: user.firstName, username: user.username };
+		return formatResponse(
+			{ firstName: user.firstName, username: user.username },
+			'Пользователь инициализирован',
+		);
 	}
 
-	async login(userDto: LoginDto) {
+	async login(userDto: LoginDto): Promise<ApiResponse<string>> {
 		const user = await this.validateUser(userDto);
 		const token = await this.generateToken(user);
 
-		return {
-			data: token,
-			message: 'Успешная авторизация',
-		};
+		return formatResponse(token, 'Вы успешно вошли в аккаунт');
 	}
 
-	async registration(userDto: CreateUserDto) {
+	async registration(userDto: CreateUserDto): Promise<ApiResponse<string>> {
 		const isEmailExist = await this.usersService.getUserByEmail(userDto.email);
 		const isUsernameExist = await this.usersService.getUserByUsername(userDto.username);
 
@@ -52,13 +59,10 @@ export class AuthService {
 
 		const token = await this.generateToken(user);
 
-		return {
-			data: token,
-			message: 'Успешная регистрация',
-		};
+		return formatResponse(token, 'Пользователь успешно зарегистрирован');
 	}
 
-	private async generateToken(user: User) {
+	private async generateToken(user: User): Promise<string> {
 		const payload = { _id: user._id };
 
 		return this.jwtService.sign(payload);
