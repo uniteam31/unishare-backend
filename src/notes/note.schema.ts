@@ -11,7 +11,7 @@ export type NoteCreator = {
 	id: Types.ObjectId;
 };
 
-@Schema()
+@Schema({ timestamps: true })
 export class Note {
 	/** Поле, представляющее связь с пользователем */
 	@Prop({ required: true })
@@ -22,12 +22,6 @@ export class Note {
 
 	@Prop()
 	text: string;
-
-	@Prop({ default: () => new Date().toISOString() }) // Текущая дата в ISO формате
-	createdAt: string;
-
-	@Prop({ default: () => new Date().toISOString() }) // Текущая дата в ISO формате
-	updatedAt: string;
 }
 
 /** Основная схема */

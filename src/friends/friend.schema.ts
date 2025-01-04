@@ -7,28 +7,21 @@ import { HydratedDocument, Types } from 'mongoose';
  * */
 export type FriendDocument = HydratedDocument<Friend>;
 
-@Schema()
+@Schema({ timestamps: true })
 export class Friend {
 	_id: Types.ObjectId;
 
 	@Prop({ required: true })
 	ownerID: Types.ObjectId;
 
-	@Prop({ default: [] })
+	@Prop({ type: [{ type: Types.ObjectId, ref: 'User' }], default: [] })
 	friends: Types.ObjectId[];
 
-	@Prop({ default: [] })
-	incomingRequests: Types.ObjectId[];
+	@Prop({ type: [{ type: Types.ObjectId, ref: 'User' }], default: [] })
+	incomingRequestsUserIDs: Types.ObjectId[];
 
-	@Prop({ default: [] })
-	outgoingRequests: Types.ObjectId[];
-
-	/** Все даты в ISO формате */
-	@Prop()
-	createdAt: string;
-
-	@Prop()
-	updatedAt?: string;
+	@Prop({ type: [{ type: Types.ObjectId, ref: 'User' }], default: [] })
+	outgoingRequestsUserIDs: Types.ObjectId[];
 }
 
 /** Основная схема */

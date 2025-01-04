@@ -16,13 +16,9 @@ export class NotesService {
 		createNoteDto: CreateNoteDto,
 		ownerID: Types.ObjectId,
 	): Promise<ApiResponse<Note>> {
-		const createdAt = new Date().toISOString();
-		const updatedAt = createdAt;
-
 		const createdNote = new this.noteModel({
 			...createNoteDto,
-			createdAt,
-			updatedAt,
+
 			ownerID,
 		});
 
@@ -40,11 +36,9 @@ export class NotesService {
 		ownerID: Types.ObjectId,
 		updateNoteDto: UpdateNoteDto,
 	): Promise<ApiResponse<Note>> {
-		const updatedAt = new Date().toISOString();
-
 		const updatedNote = await this.noteModel.findOneAndUpdate(
 			{ _id: noteID, ownerID },
-			{ $set: { ...updateNoteDto, updatedAt } },
+			{ $set: { ...updateNoteDto } },
 			{ new: true },
 		);
 
