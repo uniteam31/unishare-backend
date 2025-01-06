@@ -59,7 +59,14 @@ export class FriendsService {
 			model: 'User', // ОБЯЗАТЕЛЬНО указывать модель при populate
 		});
 
-		return formatResponse(populatedFriends.friends, 'Список получен успешно');
+		const leanFriendsEntity = populatedFriends.toObject();
+
+		const friendsListWithFriendsStatus = leanFriendsEntity.friends.map((friend) => ({
+			...friend,
+			friendStatus: 'friend',
+		}));
+
+		return formatResponse(friendsListWithFriendsStatus, 'Список получен успешно');
 	}
 
 	async getPersonalIncomingFriendsRequests(ownerID: Types.ObjectId) {
@@ -96,7 +103,17 @@ export class FriendsService {
 			model: 'User', // ОБЯЗАТЕЛЬНО указывать модель при populate
 		});
 
-		return formatResponse(populatedFriends.outgoingRequestsUserIDs, 'Запросы успешно получены');
+		const leanFriendsEntity = populatedFriends.toObject();
+
+		// TODO можно вынести в функцию
+		const outgoingRequestsWithFriendStatus = leanFriendsEntity.outgoingRequestsUserIDs.map(
+			(request) => ({
+				...request,
+				friendStatus: 'sent',
+			}),
+		);
+
+		return formatResponse(outgoingRequestsWithFriendStatus, 'Запросы успешно получены');
 	}
 
 	async sendFriendsRequest(senderID: Types.ObjectId, recipientID: Types.ObjectId) {
