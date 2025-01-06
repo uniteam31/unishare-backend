@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+	BadRequestException,
+	forwardRef,
+	Inject,
+	Injectable,
+	NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Friend } from './friend.schema';
@@ -9,7 +15,7 @@ import { formatResponse } from '../common/utils/response.util';
 export class FriendsService {
 	constructor(
 		@InjectModel(Friend.name) private friendModel: Model<Friend>,
-		private usersService: UsersService,
+		@Inject(forwardRef(() => UsersService)) private usersService: UsersService,
 	) {}
 
 	private async checkFriendsEntityAndCreateIfEmpty(ownerID: Types.ObjectId) {
@@ -34,13 +40,26 @@ export class FriendsService {
 		return newFriendEntity.save();
 	}
 
+	async getFriendsEntity(ownerID: Types.ObjectId) {
+		await this.checkFriendsEntityAndCreateIfEmpty(ownerID);
+
+		const friendsEntity = await this.friendModel.findOne({ ownerID });
+		return friendsEntity;
+	}
+
 	/** Если сущности друзей нет, то создает новую для пользователя */
 	async getFriendsListByOwnerID(ownerID: Types.ObjectId) {
 		await this.checkFriendsEntityAndCreateIfEmpty(ownerID);
 
 		const friendsEntity = await this.friendModel.findOne({ ownerID });
 
-		return formatResponse(friendsEntity.friends, 'Список получен успешно');
+		const populatedFriends = await friendsEntity.populate({
+			path: 'friends',
+			select: 'firstName username avatar',
+			model: 'User', // ОБЯЗАТЕЛЬНО указывать модель при populate
+		});
+
+		return formatResponse(populatedFriends.friends, 'Список получен успешно');
 	}
 
 	async getPersonalIncomingFriendsRequests(ownerID: Types.ObjectId) {
@@ -54,7 +73,16 @@ export class FriendsService {
 			model: 'User', // ОБЯЗАТЕЛЬНО указывать модель при populate
 		});
 
-		return formatResponse(populatedFriends.incomingRequestsUserIDs, 'Запросы успешно получены');
+		const leanFriendsEntity = populatedFriends.toObject();
+
+		const incomingRequestsWithFriendStatus = leanFriendsEntity.incomingRequestsUserIDs.map(
+			(request) => ({
+				...request,
+				friendStatus: 'pendingAcceptance',
+			}),
+		);
+
+		return formatResponse(incomingRequestsWithFriendStatus, 'Запросы успешно получены');
 	}
 
 	async getPersonalOutgoingFriendsRequests(ownerID: Types.ObjectId) {
@@ -75,7 +103,6 @@ export class FriendsService {
 		await this.checkFriendsEntityAndCreateIfEmpty(senderID);
 		await this.checkFriendsEntityAndCreateIfEmpty(recipientID);
 
-		// const recipientFriendsEntity = await this.friendModel.findOne({ ownerID: recipientID });
 		const senderFriendsEntity = await this.friendModel.findOne({ ownerID: senderID });
 
 		if (recipientID === senderID) {
@@ -92,7 +119,7 @@ export class FriendsService {
 			throw new BadRequestException('Этот пользователь уже у вас в друзьях');
 		}
 
-		// TODO если пользователю уже отпрsавляли запрос -> уведомлять об этом
+		// TODO если пользователю уже отправляли запрос -> уведомлять об этом
 		await this.friendModel.updateOne(
 			{ ownerID: senderID },
 			{ $addToSet: { outgoingRequestsUserIDs: recipientID } },
@@ -139,5 +166,38 @@ export class FriendsService {
 		}
 
 		return formatResponse(null, 'Заявка в друзья успешно принята!');
+	}
+
+	async deleteFriend(ownerID: Types.ObjectId, friendID: Types.ObjectId) {
+		await this.checkFriendsEntityAndCreateIfEmpty(ownerID);
+		await this.checkFriendsEntityAndCreateIfEmpty(friendID);
+
+		await this.friendModel.updateOne({ ownerID }, { $pull: { friends: friendID } });
+
+		await this.friendModel.updateOne({ ownerID: friendID }, { $pull: { friends: ownerID } });
+
+		// TODO эта ошибка никогда не выбрасывается, разобраться
+		// if (!result.modifiedCount) {
+		// 	throw new BadRequestException('Такой пользователь не найден среди ваших друзей');
+		// }
+
+		return formatResponse(null, 'Друг успешно удален');
+	}
+
+	async declineFriendsRequest(recipientID: Types.ObjectId, senderID: Types.ObjectId) {
+		await this.checkFriendsEntityAndCreateIfEmpty(recipientID);
+		await this.checkFriendsEntityAndCreateIfEmpty(senderID);
+
+		await this.friendModel.updateOne(
+			{ ownerID: recipientID },
+			{ $pull: { incomingRequestsUserIDs: senderID } },
+		);
+
+		await this.friendModel.updateOne(
+			{ ownerID: senderID },
+			{ $pull: { outgoingRequestsUserIDs: recipientID } },
+		);
+
+		return formatResponse(null, 'Запрос успешно отклонен');
 	}
 }

@@ -1,12 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from './user.schema';
 import { Model, Types } from 'mongoose';
 import { CreateUserDto } from './dto/create-user-dto';
+import { formatResponse } from '../common/utils/response.util';
+import { FriendsService } from '../friends/friends.service';
 
 @Injectable()
 export class UsersService {
-	constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+	constructor(
+		@InjectModel(User.name) private userModel: Model<User>,
+		@Inject(forwardRef(() => FriendsService)) private friendsService: FriendsService,
+	) {}
 
 	async createUser(createUserDto: CreateUserDto): Promise<User> {
 		const createdUser = new this.userModel(createUserDto);
@@ -14,11 +19,6 @@ export class UsersService {
 		 * операцию
 		 * */
 		return createdUser.save();
-	}
-
-	async getAllUsers(): Promise<User[]> {
-		/** exec() нужен для явного указания того, что мы возвращаем промис */
-		return this.userModel.find().exec();
 	}
 
 	async getUserByEmail(email: string) {
@@ -31,5 +31,41 @@ export class UsersService {
 
 	async getUserByID(id: Types.ObjectId) {
 		return this.userModel.findById(id).exec();
+	}
+
+	async getUsersByUsernameWithFriendStatus(
+		ownerID: Types.ObjectId,
+		username: User['username'] = '',
+	) {
+		const foundedUsers = await this.userModel
+			.find({ username: { $regex: username, $options: 'i' } })
+			.select('_id avatar username firstName')
+			.lean();
+
+		const ownerFriendsEntity = await this.friendsService.getFriendsEntity(ownerID);
+
+		const foundUsersWithFriendStatus = foundedUsers.map((user) => {
+			// TODO вынести тип
+			let friendStatus = null;
+
+			if (ownerFriendsEntity.incomingRequestsUserIDs.includes(user._id)) {
+				friendStatus = 'pendingAcceptance';
+			}
+
+			if (ownerFriendsEntity.outgoingRequestsUserIDs.includes(user._id)) {
+				friendStatus = 'sent';
+			}
+
+			if (ownerFriendsEntity.friends.includes(user._id)) {
+				friendStatus = 'friend';
+			}
+
+			return {
+				...user,
+				friendStatus,
+			};
+		});
+
+		return formatResponse(foundUsersWithFriendStatus, 'Список успешно получен');
 	}
 }
