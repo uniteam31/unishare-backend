@@ -4,6 +4,7 @@ import {
 	Get,
 	Param,
 	Post,
+	Query,
 	Request,
 	UseGuards,
 } from '@nestjs/common';
@@ -11,6 +12,7 @@ import { FriendsService } from './friends.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { IAuthenticatedRequest } from '../auth/types/authenticated-request.interface';
 import { Types } from 'mongoose';
+import { User } from '../users/user.schema';
 
 @UseGuards(JwtAuthGuard)
 @Controller('friends')
@@ -18,10 +20,14 @@ export class FriendsController {
 	constructor(private friendsService: FriendsService) {}
 
 	@Get('list')
-	getPersonalFriendsList(@Request() req: IAuthenticatedRequest) {
+	getPersonalFriendsList(
+		@Request() req: IAuthenticatedRequest,
+		@Query() query: { username: User['username'] },
+	) {
 		const ownerID = req.user._id;
+		const { username } = query;
 
-		return this.friendsService.getFriendsListByOwnerID(ownerID);
+		return this.friendsService.getFriendsListByOwnerID(ownerID, username);
 	}
 
 	@Get('list/:ownerID')

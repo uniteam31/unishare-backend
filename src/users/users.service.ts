@@ -5,6 +5,7 @@ import { Model, Types } from 'mongoose';
 import { CreateUserDto } from './dto/create-user-dto';
 import { formatResponse } from '../common/utils/response.util';
 import { FriendsService } from '../friends/friends.service';
+import type { FriendStatus } from '../friends/types/friend.types';
 
 @Injectable()
 export class UsersService {
@@ -45,8 +46,7 @@ export class UsersService {
 		const ownerFriendsEntity = await this.friendsService.getFriendsEntity(ownerID);
 
 		const foundUsersWithFriendStatus = foundedUsers.map((user) => {
-			// TODO вынести тип
-			let friendStatus = null;
+			let friendStatus: FriendStatus = null;
 
 			if (ownerFriendsEntity.incomingRequestsUserIDs.includes(user._id)) {
 				friendStatus = 'pendingAcceptance';

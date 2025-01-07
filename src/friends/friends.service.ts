@@ -10,6 +10,8 @@ import { Model, Types } from 'mongoose';
 import { Friend } from './friend.schema';
 import { UsersService } from '../users/users.service';
 import { formatResponse } from '../common/utils/response.util';
+import type { User } from '../users/user.schema';
+import type { PublicUser } from '../users/types/user.types';
 
 @Injectable()
 export class FriendsService {
@@ -48,20 +50,24 @@ export class FriendsService {
 	}
 
 	/** Если сущности друзей нет, то создает новую для пользователя */
-	async getFriendsListByOwnerID(ownerID: Types.ObjectId) {
+	async getFriendsListByOwnerID(ownerID: Types.ObjectId, username: User['username'] = '') {
 		await this.checkFriendsEntityAndCreateIfEmpty(ownerID);
 
 		const friendsEntity = await this.friendModel.findOne({ ownerID });
 
-		const populatedFriends = await friendsEntity.populate({
+		const populatedFriendsEntity = await friendsEntity.populate<{ friends: PublicUser[] }>({
 			path: 'friends',
 			select: 'firstName username avatar',
 			model: 'User', // ОБЯЗАТЕЛЬНО указывать модель при populate
 		});
 
-		const leanFriendsEntity = populatedFriends.toObject();
+		const leanFriendsEntity = populatedFriendsEntity.toObject<{ friends: PublicUser[] }>();
 
-		const friendsListWithFriendsStatus = leanFriendsEntity.friends.map((friend) => ({
+		const filteredFriends = leanFriendsEntity.friends.filter((friend) =>
+			new RegExp(username, 'i').test(friend.username),
+		);
+
+		const friendsListWithFriendsStatus = filteredFriends.map((friend) => ({
 			...friend,
 			friendStatus: 'friend',
 		}));
@@ -74,13 +80,17 @@ export class FriendsService {
 
 		const friendsEntity = await this.friendModel.findOne({ ownerID });
 
-		const populatedFriends = await friendsEntity.populate({
+		const populatedFriends = await friendsEntity.populate<{
+			incomingRequestsUserIDs: PublicUser[];
+		}>({
 			path: 'incomingRequestsUserIDs',
-			select: 'firstName username avatar',
+			select: '_id firstName username avatar',
 			model: 'User', // ОБЯЗАТЕЛЬНО указывать модель при populate
 		});
 
-		const leanFriendsEntity = populatedFriends.toObject();
+		const leanFriendsEntity = populatedFriends.toObject<{
+			incomingRequestsUserIDs: PublicUser[];
+		}>();
 
 		const incomingRequestsWithFriendStatus = leanFriendsEntity.incomingRequestsUserIDs.map(
 			(request) => ({
@@ -97,13 +107,17 @@ export class FriendsService {
 
 		const friendsEntity = await this.friendModel.findOne({ ownerID });
 
-		const populatedFriends = await friendsEntity.populate({
+		const populatedFriends = await friendsEntity.populate<{
+			outgoingRequestsUserIDs: PublicUser[];
+		}>({
 			path: 'outgoingRequestsUserIDs',
-			select: 'firstName username avatar',
+			select: '_id firstName username avatar',
 			model: 'User', // ОБЯЗАТЕЛЬНО указывать модель при populate
 		});
 
-		const leanFriendsEntity = populatedFriends.toObject();
+		const leanFriendsEntity = populatedFriends.toObject<{
+			outgoingRequestsUserIDs: PublicUser[];
+		}>();
 
 		// TODO можно вынести в функцию
 		const outgoingRequestsWithFriendStatus = leanFriendsEntity.outgoingRequestsUserIDs.map(
@@ -154,33 +168,31 @@ export class FriendsService {
 		await this.checkFriendsEntityAndCreateIfEmpty(recipientID);
 		await this.checkFriendsEntityAndCreateIfEmpty(senderID);
 
-		const recipientFriendsEntity = await this.friendModel.findOne({ ownerID: recipientID });
-		const senderFriendsEntity = await this.friendModel.findOne({ ownerID: senderID });
+		const recipientUpdateResult = await this.friendModel.updateOne(
+			{
+				ownerID: recipientID,
+				incomingRequestsUserIDs: senderID,
+			},
+			{
+				$addToSet: { friends: senderID },
+				$pull: { incomingRequestsUserIDs: senderID },
+			},
+		);
 
-		if (
-			recipientFriendsEntity.incomingRequestsUserIDs.includes(senderID) &&
-			senderFriendsEntity.outgoingRequestsUserIDs.includes(recipientID)
-		) {
-			await this.friendModel.updateOne(
-				{ ownerID: recipientID },
-				{ $addToSet: { friends: senderID } },
-			);
-
-			await this.friendModel.updateOne(
-				{ ownerID: senderID },
-				{ $addToSet: { friends: recipientID } },
-			);
-
-			await this.friendModel.updateOne(
-				{ ownerID: recipientID },
-				{ $pull: { incomingRequestsUserIDs: senderID } },
-			);
-
-			await this.friendModel.updateOne(
-				{ ownerID: senderID },
-				{ $pull: { outgoingRequestsUserIDs: recipientID } },
-			);
+		if (recipientUpdateResult.modifiedCount === 0) {
+			throw new BadRequestException('Заявка на добавление в друзья не найдена');
 		}
+
+		await this.friendModel.updateOne(
+			{
+				ownerID: senderID,
+				outgoingRequestsUserIDs: recipientID,
+			},
+			{
+				$addToSet: { friends: recipientID },
+				$pull: { outgoingRequestsUserIDs: recipientID },
+			},
+		);
 
 		return formatResponse(null, 'Заявка в друзья успешно принята!');
 	}
