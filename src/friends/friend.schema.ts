@@ -5,24 +5,24 @@ import { HydratedDocument, Types } from 'mongoose';
  * Это типизированный объект, который включает в себя все методы Mongoose,
  * такие, как save(), remove() и т.д.
  * */
-export type NoteDocument = HydratedDocument<Note>;
-
-export type NoteCreator = {
-	id: Types.ObjectId;
-};
+export type FriendDocument = HydratedDocument<Friend>;
 
 @Schema({ timestamps: true })
-export class Note {
-	/** Поле, представляющее связь с пользователем */
+export class Friend {
+	_id: Types.ObjectId;
+
 	@Prop({ required: true })
 	ownerID: Types.ObjectId;
 
-	@Prop()
-	title: string;
+	@Prop({ type: [{ type: Types.ObjectId, ref: 'User' }], default: [] })
+	friends: Types.ObjectId[];
 
-	@Prop()
-	text: string;
+	@Prop({ type: [{ type: Types.ObjectId, ref: 'User' }], default: [] })
+	incomingRequestsUserIDs: Types.ObjectId[];
+
+	@Prop({ type: [{ type: Types.ObjectId, ref: 'User' }], default: [] })
+	outgoingRequestsUserIDs: Types.ObjectId[];
 }
 
 /** Основная схема */
-export const NoteSchema = SchemaFactory.createForClass(Note);
+export const FriendSchema = SchemaFactory.createForClass(Friend);

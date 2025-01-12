@@ -24,7 +24,12 @@ export class AuthService {
 	async init(userID: Types.ObjectId): Promise<ApiResponse<TUserInitialData>> {
 		const user = await this.usersService.getUserByID(userID);
 		return formatResponse(
-			{ firstName: user.firstName, username: user.username },
+			{
+				firstName: user.firstName,
+				username: user.username,
+				avatar: user.avatar,
+				_id: userID,
+			},
 			'Пользователь инициализирован',
 		);
 	}

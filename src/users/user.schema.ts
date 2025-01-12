@@ -7,7 +7,7 @@ import { HydratedDocument, Types } from 'mongoose';
  * */
 export type UserDocument = HydratedDocument<User>;
 
-@Schema()
+@Schema({ timestamps: true })
 export class User {
 	_id: Types.ObjectId;
 
@@ -22,6 +22,13 @@ export class User {
 
 	@Prop({ required: true, unique: true })
 	username: string;
+
+	// TODO расхардкодить
+	@Prop({
+		default:
+			'https://avatars.mds.yandex.net/i?id=29f7366ac823f46165612d9480e60f0e_l-13215132-images-thumbs&n=13',
+	})
+	avatar: string;
 }
 
 /** Основная схема */
