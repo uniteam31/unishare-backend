@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from './user.schema';
 import { Model, Types } from 'mongoose';
@@ -6,6 +6,7 @@ import { CreateUserDto } from './dto/create-user-dto';
 import { formatResponse } from '../common/utils/response.util';
 import { FriendsService } from '../friends/friends.service';
 import type { FriendStatus } from '../friends/types/friend.types';
+import { UpdateUserPersonalDataDto } from './dto/update-user-personal-data-dto';
 
 @Injectable()
 export class UsersService {
@@ -67,5 +68,38 @@ export class UsersService {
 		});
 
 		return formatResponse(foundUsersWithFriendStatus, 'Список успешно получен');
+	}
+
+	async getUserPersonalData(userID: Types.ObjectId) {
+		const personalData = await this.userModel
+			.findOne({ _id: userID })
+			.select('_id avatar username firstName');
+
+		if (!personalData) {
+			throw new NotFoundException('Такой пользователь не найден или у вас нет доступа');
+		}
+
+		return personalData;
+	}
+
+	async updateUserPersonalData(
+		userID: Types.ObjectId,
+		updateUserPersonalDataDto: UpdateUserPersonalDataDto,
+	) {
+		const updatedPersonalData = await this.userModel
+			.findOneAndUpdate(
+				{ _id: userID },
+				{ $set: { ...updateUserPersonalDataDto } },
+				{ new: true },
+			)
+			.select('_id avatar username firstName');
+
+		if (!updatedPersonalData) {
+			throw new NotFoundException(
+				'Такого пользователя нет или у вас нет прав для редактирования',
+			);
+		}
+
+		return updatedPersonalData;
 	}
 }

@@ -1,8 +1,10 @@
-import { Controller, Get, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Put, Query, Request, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { User } from './user.schema';
 import { IAuthenticatedRequest } from '../auth/types/authenticated-request.interface';
+import { formatResponse } from '../common/utils/response.util';
+import { UpdateUserPersonalDataDto } from './dto/update-user-personal-data-dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('users')
@@ -18,5 +20,29 @@ export class UsersController {
 		const ownerID = req.user._id;
 
 		return this.usersService.getUsersByUsernameWithFriendStatus(ownerID, username);
+	}
+
+	@Get('personalData')
+	async getUserPersonalData(@Request() req: IAuthenticatedRequest) {
+		const userID = req.user._id;
+
+		const personalData = await this.usersService.getUserPersonalData(userID);
+
+		return formatResponse(personalData, 'Данные успешно получены');
+	}
+
+	@Put('personalData')
+	async updateUserPersonalData(
+		@Body() updateUserPersonalDataDto: UpdateUserPersonalDataDto,
+		@Request() req: IAuthenticatedRequest,
+	) {
+		const userID = req.user._id;
+
+		const updatedPersonaData = await this.usersService.updateUserPersonalData(
+			userID,
+			updateUserPersonalDataDto,
+		);
+
+		return formatResponse(updatedPersonaData, 'Данные успешно обновлены');
 	}
 }
