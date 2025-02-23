@@ -30,7 +30,7 @@ export class Event {
 	interval?: number;
 
 	@Prop()
-	period?: 'dat' | 'week' | 'month' | 'year';
+	period?: 'day' | 'week' | 'month' | 'year';
 
 	@Prop()
 	days?: number[];
