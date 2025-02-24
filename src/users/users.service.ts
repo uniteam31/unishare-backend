@@ -73,7 +73,7 @@ export class UsersService {
 	async getUserPersonalData(userID: Types.ObjectId) {
 		const personalData = await this.userModel
 			.findOne({ _id: userID })
-			.select('_id avatar username firstName');
+			.select('_id avatar username firstName lastName');
 
 		if (!personalData) {
 			throw new NotFoundException('Такой пользователь не найден или у вас нет доступа');
@@ -92,7 +92,7 @@ export class UsersService {
 				{ $set: { ...updateUserPersonalDataDto } },
 				{ new: true },
 			)
-			.select('_id avatar username firstName');
+			.select('_id avatar username firstName lastName');
 
 		if (!updatedPersonalData) {
 			throw new NotFoundException(
