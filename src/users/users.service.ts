@@ -7,6 +7,7 @@ import { formatResponse } from '../common/utils/response.util';
 import { FriendsService } from '../friends/friends.service';
 import type { FriendStatus } from '../friends/types/friend.types';
 import { UpdateUserPersonalDataDto } from './dto/update-user-personal-data-dto';
+import { UpdateUserAuthenticationDataDto } from './dto/update-user-authentication-data-dto';
 
 @Injectable()
 export class UsersService {
@@ -101,5 +102,38 @@ export class UsersService {
 		}
 
 		return updatedPersonalData;
+	}
+
+	async getUserAuthenticationData(userID: Types.ObjectId) {
+		const authenticationData = await this.userModel
+			.findOne({ _id: userID })
+			.select('email educationalEmail');
+
+		if (!authenticationData) {
+			throw new NotFoundException('Такой пользователь не найден или у вас нет доступа');
+		}
+
+		return authenticationData;
+	}
+
+	async updateUserAuthenticationData(
+		userID: Types.ObjectId,
+		updateUserAuthenticationDataDto: UpdateUserAuthenticationDataDto,
+	) {
+		const updatedAuthenticationData = await this.userModel
+			.findOneAndUpdate(
+				{ _id: userID },
+				{ $set: { ...updateUserAuthenticationDataDto } },
+				{ new: true },
+			)
+			.select('email educationalEmail');
+
+		if (!updatedAuthenticationData) {
+			throw new NotFoundException(
+				'Такого пользователя нет или у вас нет прав для редактирования',
+			);
+		}
+
+		return updatedAuthenticationData;
 	}
 }
