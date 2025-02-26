@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Put, Query, Request, UseGuards } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Get,
+	Put,
+	Query,
+	Request,
+	UseGuards,
+	UsePipes,
+	ValidationPipe,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { User } from './user.schema';
@@ -33,6 +43,7 @@ export class UsersController {
 	}
 
 	@Put('personalData')
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async updateUserPersonalData(
 		@Body() updateUserPersonalDataDto: UpdateUserPersonalDataDto,
 		@Request() req: IAuthenticatedRequest,

@@ -1,4 +1,10 @@
-import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+	BadRequestException,
+	forwardRef,
+	Inject,
+	Injectable,
+	NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from './user.schema';
 import { Model, Types } from 'mongoose';
@@ -87,6 +93,18 @@ export class UsersService {
 		userID: Types.ObjectId,
 		updateUserPersonalDataDto: UpdateUserPersonalDataDto,
 	) {
+		if (updateUserPersonalDataDto.username) {
+			const candidate = await this.userModel.findOne({
+				username: updateUserPersonalDataDto.username,
+			});
+
+			if (candidate) {
+				throw new BadRequestException(
+					'Пользователь с таким именем пользователя уже существует',
+				);
+			}
+		}
+
 		const updatedPersonalData = await this.userModel
 			.findOneAndUpdate(
 				{ _id: userID },
