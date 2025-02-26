@@ -14,11 +14,17 @@ export class User {
 	@Prop({ required: true, unique: true })
 	email: string;
 
+	@Prop()
+	educationalEmail?: string;
+
 	@Prop({ required: true })
 	password: string;
 
 	@Prop()
 	firstName: string;
+
+	@Prop()
+	lastName?: string;
 
 	@Prop({ required: true, unique: true })
 	username: string;
