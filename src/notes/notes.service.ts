@@ -15,18 +15,25 @@ export class NotesService {
 	async createNote(
 		createNoteDto: CreateNoteDto,
 		ownerID: Types.ObjectId,
+		currentSpaceID: Types.ObjectId,
 	): Promise<ApiResponse<Note>> {
 		const createdNote = new this.noteModel({
 			...createNoteDto,
 
 			ownerID,
+			spacesIDs: [currentSpaceID],
 		});
 
 		return formatResponse<Note>(await createdNote.save(), 'Заметка успешно создана');
 	}
 
-	async getUserNotes(ownerID: Types.ObjectId): Promise<ApiResponse<Note[]>> {
-		const userNotes = await this.noteModel.find({ ownerID }).sort({ createdAt: -1 });
+	async getUserNotes(
+		ownerID: Types.ObjectId,
+		currentSpaceID: Types.ObjectId,
+	): Promise<ApiResponse<Note[]>> {
+		const userNotes = await this.noteModel
+			.find({ ownerID, spacesIDs: currentSpaceID })
+			.sort({ createdAt: -1 });
 
 		return formatResponse<Note[]>(userNotes, '');
 	}

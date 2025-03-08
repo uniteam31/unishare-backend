@@ -12,6 +12,7 @@ import { formatResponse } from '../common/utils/response.util';
 type TUserInitialData = {
 	firstName: User['firstName'];
 	username: User['username'];
+	personalSpaceID: User['personalSpaceID'];
 };
 
 @Injectable()
@@ -23,12 +24,16 @@ export class AuthService {
 
 	async init(userID: Types.ObjectId): Promise<ApiResponse<TUserInitialData>> {
 		const user = await this.usersService.getUserByID(userID);
+
+		// TODO cделать populate по spacesIDs
 		return formatResponse(
 			{
-				firstName: user.firstName,
-				username: user.username,
-				avatar: user.avatar,
 				_id: userID,
+				username: user.username,
+				firstName: user.firstName,
+				avatar: user.avatar,
+				personalSpaceID: user.personalSpaceID,
+				spacesIDs: user.spacesIDs,
 			},
 			'Пользователь инициализирован',
 		);

@@ -23,16 +23,18 @@ export class NotesController {
 
 	@Post()
 	createNote(@Body() createNoteDto: CreateNoteDto, @Request() req: IAuthenticatedRequest) {
+		const currentSpace = req.currentSpaceID;
 		const ownerID = req.user._id;
 
-		return this.notesService.createNote(createNoteDto, ownerID);
+		return this.notesService.createNote(createNoteDto, ownerID, currentSpace);
 	}
 
 	@Get()
 	getUserNotes(@Request() req: IAuthenticatedRequest) {
+		const currentSpaceID = req.currentSpaceID;
 		const ownerID = req.user._id;
 
-		return this.notesService.getUserNotes(ownerID);
+		return this.notesService.getUserNotes(ownerID, currentSpaceID);
 	}
 
 	@Put(':id')

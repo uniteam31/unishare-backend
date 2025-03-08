@@ -14,16 +14,28 @@ import { FriendsService } from '../friends/friends.service';
 import type { FriendStatus } from '../friends/types/friend.types';
 import { UpdateUserPersonalDataDto } from './dto/update-user-personal-data-dto';
 import { UpdateUserAuthenticationDataDto } from './dto/update-user-authentication-data-dto';
+import { SpacesService } from '../spaces/spaces.service';
+import { CreateSpaceDto } from '../spaces/dto/create-space-dto';
 
 @Injectable()
 export class UsersService {
 	constructor(
 		@InjectModel(User.name) private userModel: Model<User>,
 		@Inject(forwardRef(() => FriendsService)) private friendsService: FriendsService,
+		@Inject(forwardRef(() => SpacesService)) private spacesService: SpacesService,
 	) {}
 
 	async createUser(createUserDto: CreateUserDto): Promise<User> {
 		const createdUser = new this.userModel(createUserDto);
+
+		const personalSpace: CreateSpaceDto = {
+			name: createdUser.username,
+		};
+
+		const createdSpace = await this.spacesService.createSpace(createdUser._id, personalSpace);
+
+		createdUser.personalSpaceID = createdSpace._id;
+
 		/** здесь exec() не нужен, потому что мы уже знаем, что выполняем асинхронную
 		 * операцию
 		 * */

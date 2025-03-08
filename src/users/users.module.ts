@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from './user.schema';
 import { AuthModule } from '../auth/auth.module';
 import { FriendsModule } from '../friends/friends.module';
+import { SpacesModule } from '../spaces/spaces.module';
 
 @Module({
 	controllers: [UsersController],
@@ -14,6 +15,7 @@ import { FriendsModule } from '../friends/friends.module';
 		MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
 		forwardRef(() => AuthModule),
 		FriendsModule,
+		SpacesModule,
 	],
 	exports: [UsersService],
 })
