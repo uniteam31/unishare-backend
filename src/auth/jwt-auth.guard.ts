@@ -30,13 +30,11 @@ export class JwtAuthGuard implements CanActivate {
 
 			/** Получаю информацию о текущем пространстве из куки */
 			// TODO сделать импорт из shared-toolkit
-			const currentSpaceID = req.headers['current-space-id'];
-			const isValidObjectIDString = currentSpaceID?.length === 24;
+			const currentSpaceID = req.cookies['currentSpaceID'];
+			const isValidObjectIDString = Types.ObjectId.isValid(currentSpaceID);
 
-			if (isValidObjectIDString && !(currentSpaceID instanceof Types.ObjectId)) {
+			if (isValidObjectIDString) {
 				req.currentSpaceID = new Types.ObjectId(currentSpaceID);
-			} else {
-				req.currentSpaceID = null;
 			}
 
 			return true;

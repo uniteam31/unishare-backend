@@ -80,8 +80,6 @@ export class FriendsService {
 
 		const friendsEntity = await this.friendModel.findOne({ ownerID });
 
-		console.log({ friendsEntity });
-
 		const populatedFriends = await friendsEntity.populate<{
 			incomingRequestsUserIDs: PublicUser[];
 		}>({

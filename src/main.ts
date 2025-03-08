@@ -1,12 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import * as cookieParser from 'cookie-parser';
 
 const start = async () => {
 	const PORT = process.env.PORT || 8000;
 	const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
 	const app = await NestFactory.create(AppModule);
 
+	app.use(cookieParser());
 	app.setGlobalPrefix('api');
 	app.enableCors({
 		origin: CLIENT_URL,
