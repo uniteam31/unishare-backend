@@ -26,20 +26,24 @@ export class UsersService {
 	) {}
 
 	async createUser(createUserDto: CreateUserDto): Promise<User> {
-		const createdUser = new this.userModel(createUserDto);
+		const createdUser = await this.userModel.create({ personalSpaceID: -1, ...createUserDto });
 
 		const personalSpace: CreateSpaceDto = {
 			name: createdUser.username,
+			membersIDs: [],
 		};
 
+		/** У каждого пользователя при регистрации создается личное пространство под его именем */
 		const createdSpace = await this.spacesService.createSpace(createdUser._id, personalSpace);
 
-		createdUser.personalSpaceID = createdSpace._id;
+		const user = await this.userModel.findOneAndUpdate(
+			{ _id: createdUser._id },
+			{ personalSpaceID: createdSpace._id },
+			{ new: true },
+		);
 
-		/** здесь exec() не нужен, потому что мы уже знаем, что выполняем асинхронную
-		 * операцию
-		 * */
-		return createdUser.save();
+		/** здесь exec() не нужен, потому что мы уже знаем, что выполняем асинхронную операцию */
+		return user;
 	}
 
 	async getUserByEmail(email: string) {
@@ -165,5 +169,37 @@ export class UsersService {
 		}
 
 		return updatedAuthenticationData;
+	}
+
+	async getUserSpacesIDs(userID: Types.ObjectId) {
+		const user = await this.userModel.findOne({ _id: userID });
+
+		if (!user) {
+			throw new NotFoundException('Такой пользователь не найден');
+		}
+
+		return user.spacesIDs;
+	}
+
+	async getUserSpaces(userID: Types.ObjectId) {
+		const user = await this.userModel.findOne({ _id: userID });
+
+		if (!user) {
+			throw new NotFoundException('Такой пользователь не найден');
+		}
+
+		const spaces = await user
+			.populate({
+				path: 'spacesIDs',
+				select: '_id name ownerID membersIDs',
+				model: 'Space',
+			})
+			.then((res) => res.spacesIDs);
+
+		return spaces;
+	}
+
+	async addSpaceIDToUser(userID: Types.ObjectId, spaceID: Types.ObjectId) {
+		await this.userModel.findOneAndUpdate({ _id: userID }, { $push: { spacesIDs: spaceID } });
 	}
 }

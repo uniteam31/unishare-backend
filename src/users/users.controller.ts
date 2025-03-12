@@ -81,4 +81,13 @@ export class UsersController {
 
 		return formatResponse(updatedPersonaData, 'Данные успешно обновлены');
 	}
+
+	@Get('spaces')
+	async getUserSpaces(@Request() req: IAuthenticatedRequest) {
+		const userID = req.user._id;
+
+		const userSpaces = await this.usersService.getUserSpaces(userID);
+
+		return formatResponse(userSpaces, 'Пространства успешно получены');
+	}
 }

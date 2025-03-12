@@ -5,6 +5,7 @@ import { AuthModule } from '../auth/auth.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Space, SpaceSchema } from './space.schema';
 import { UsersModule } from '../users/users.module';
+import { FriendsModule } from '../friends/friends.module';
 
 @Module({
 	providers: [SpacesService],
@@ -13,6 +14,7 @@ import { UsersModule } from '../users/users.module';
 		MongooseModule.forFeature([{ name: Space.name, schema: SpaceSchema }]),
 		forwardRef(() => AuthModule),
 		forwardRef(() => UsersModule),
+		forwardRef(() => FriendsModule),
 	],
 	exports: [SpacesService],
 })

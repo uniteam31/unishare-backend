@@ -11,7 +11,6 @@ import { ApiResponse } from '../common/utils/response.type';
 export class NotesService {
 	constructor(@InjectModel(Note.name) private noteModel: Model<Note>) {}
 
-	// TODO в будущем всегда ставить принадлежность ноды для конкретной группы
 	async createNote(
 		createNoteDto: CreateNoteDto,
 		ownerID: Types.ObjectId,
@@ -27,18 +26,15 @@ export class NotesService {
 		return formatResponse<Note>(await createdNote.save(), 'Заметка успешно создана');
 	}
 
-	async getUserNotes(
-		ownerID: Types.ObjectId,
-		currentSpaceID: Types.ObjectId,
-	): Promise<ApiResponse<Note[]>> {
+	async getSpaceNotes(currentSpaceID: Types.ObjectId): Promise<ApiResponse<Note[]>> {
 		const userNotes = await this.noteModel
-			.find({ ownerID, spacesIDs: currentSpaceID })
+			.find({ spacesIDs: currentSpaceID })
 			.sort({ createdAt: -1 });
 
 		return formatResponse<Note[]>(userNotes, '');
 	}
 
-	async updateUserNote(
+	async updateSpaceNote(
 		noteID: Types.ObjectId,
 		ownerID: Types.ObjectId,
 		updateNoteDto: UpdateNoteDto,
@@ -58,7 +54,7 @@ export class NotesService {
 		return formatResponse<Note>(updatedNote, 'Заметка успешно обновлена');
 	}
 
-	async deleteUserNote(
+	async deleteSpaceNote(
 		noteID: Types.ObjectId,
 		ownerID: Types.ObjectId,
 	): Promise<ApiResponse<null>> {
