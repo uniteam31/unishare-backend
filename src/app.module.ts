@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { FriendsModule } from './friends/friends.module';
 import { CalendarsModule } from './calendars/calendars.module';
 import { EventsModule } from './events/events.module';
+import { SpacesModule } from './spaces/spaces.module';
 import * as process from 'node:process';
 
 @Module({
@@ -21,6 +22,7 @@ import * as process from 'node:process';
 		NotesModule,
 		AuthModule,
 		FriendsModule,
+		SpacesModule,
 		CalendarsModule,
 		EventsModule,
 	],

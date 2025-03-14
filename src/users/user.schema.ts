@@ -14,7 +14,7 @@ export class User {
 	@Prop({ required: true, unique: true })
 	email: string;
 
-	@Prop()
+	@Prop({ unique: true, default: '' })
 	educationalEmail?: string;
 
 	@Prop({ required: true })
@@ -35,6 +35,12 @@ export class User {
 			'https://avatars.mds.yandex.net/i?id=29f7366ac823f46165612d9480e60f0e_l-13215132-images-thumbs&n=13',
 	})
 	avatar: string;
+
+	@Prop({ required: true, unique: true, ref: 'Space' })
+	personalSpaceID: Types.ObjectId;
+
+	@Prop({ type: [{ type: Types.ObjectId, ref: 'Space' }], default: [] })
+	spacesIDs: Types.ObjectId[];
 }
 
 /** Основная схема */

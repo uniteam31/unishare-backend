@@ -14,20 +14,36 @@ import { FriendsService } from '../friends/friends.service';
 import type { FriendStatus } from '../friends/types/friend.types';
 import { UpdateUserPersonalDataDto } from './dto/update-user-personal-data-dto';
 import { UpdateUserAuthenticationDataDto } from './dto/update-user-authentication-data-dto';
+import { SpacesService } from '../spaces/spaces.service';
+import { CreateSpaceDto } from '../spaces/dto/create-space-dto';
 
 @Injectable()
 export class UsersService {
 	constructor(
 		@InjectModel(User.name) private userModel: Model<User>,
 		@Inject(forwardRef(() => FriendsService)) private friendsService: FriendsService,
+		@Inject(forwardRef(() => SpacesService)) private spacesService: SpacesService,
 	) {}
 
 	async createUser(createUserDto: CreateUserDto): Promise<User> {
-		const createdUser = new this.userModel(createUserDto);
-		/** здесь exec() не нужен, потому что мы уже знаем, что выполняем асинхронную
-		 * операцию
-		 * */
-		return createdUser.save();
+		const createdUser = await this.userModel.create({ personalSpaceID: -1, ...createUserDto });
+
+		const personalSpace: CreateSpaceDto = {
+			name: createdUser.username,
+			membersIDs: [],
+		};
+
+		/** У каждого пользователя при регистрации создается личное пространство под его именем */
+		const createdSpace = await this.spacesService.createSpace(createdUser._id, personalSpace);
+
+		const user = await this.userModel.findOneAndUpdate(
+			{ _id: createdUser._id },
+			{ personalSpaceID: createdSpace._id },
+			{ new: true },
+		);
+
+		/** здесь exec() не нужен, потому что мы уже знаем, что выполняем асинхронную операцию */
+		return user;
 	}
 
 	async getUserByEmail(email: string) {
@@ -153,5 +169,37 @@ export class UsersService {
 		}
 
 		return updatedAuthenticationData;
+	}
+
+	async getUserSpacesIDs(userID: Types.ObjectId) {
+		const user = await this.userModel.findOne({ _id: userID });
+
+		if (!user) {
+			throw new NotFoundException('Такой пользователь не найден');
+		}
+
+		return user.spacesIDs;
+	}
+
+	async getUserSpaces(userID: Types.ObjectId) {
+		const user = await this.userModel.findOne({ _id: userID });
+
+		if (!user) {
+			throw new NotFoundException('Такой пользователь не найден');
+		}
+
+		const spaces = await user
+			.populate({
+				path: 'spacesIDs',
+				select: '_id name ownerID membersIDs',
+				model: 'Space',
+			})
+			.then((res) => res.spacesIDs);
+
+		return spaces;
+	}
+
+	async addSpaceIDToUser(userID: Types.ObjectId, spaceID: Types.ObjectId) {
+		await this.userModel.findOneAndUpdate({ _id: userID }, { $push: { spacesIDs: spaceID } });
 	}
 }

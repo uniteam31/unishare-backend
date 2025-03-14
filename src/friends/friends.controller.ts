@@ -31,12 +31,14 @@ export class FriendsController {
 	}
 
 	@Get('list/:ownerID')
-	getFriendsListByOwnerID(@Param('ownerID') ownerID: Types.ObjectId) {
+	getFriendsListByOwnerID(@Param('ownerID') ownerID: string) {
 		if (!Types.ObjectId.isValid(ownerID)) {
 			throw new BadRequestException('Некорректный ID');
 		}
 
-		return this.friendsService.getFriendsListByOwnerID(ownerID);
+		const objectOwnerID = new Types.ObjectId(ownerID);
+
+		return this.friendsService.getFriendsListByOwnerID(objectOwnerID);
 	}
 
 	@Get('incoming')
@@ -56,50 +58,53 @@ export class FriendsController {
 	@Post('add/:recipientID')
 	sendFriendsRequest(
 		@Request() req: IAuthenticatedRequest,
-		@Param('recipientID') recipientID: Types.ObjectId,
+		@Param('recipientID') recipientID: string,
 	) {
 		const senderID = req.user._id;
+		const objectRecipientID = new Types.ObjectId(recipientID);
 
-		return this.friendsService.sendFriendsRequest(senderID, recipientID);
+		return this.friendsService.sendFriendsRequest(senderID, objectRecipientID);
 	}
 
 	@Post('delete/:friendID')
-	deleteFriend(
-		@Request() req: IAuthenticatedRequest,
-		@Param('friendID') friendID: Types.ObjectId,
-	) {
+	deleteFriend(@Request() req: IAuthenticatedRequest, @Param('friendID') friendID: string) {
 		const ownerID = req.user._id;
-		return this.friendsService.deleteFriend(ownerID, friendID);
+		const objectFriendID = new Types.ObjectId(friendID);
+
+		return this.friendsService.deleteFriend(ownerID, objectFriendID);
 	}
 
 	@Post('accept/:senderID')
 	acceptFriendsRequest(
 		@Request() req: IAuthenticatedRequest,
-		@Param('senderID') senderID: Types.ObjectId,
+		@Param('senderID') senderID: string,
 	) {
 		const recipientID = req.user._id;
+		const objectSenderID = new Types.ObjectId(senderID);
 
-		return this.friendsService.acceptFriendsRequest(recipientID, senderID);
+		return this.friendsService.acceptFriendsRequest(recipientID, objectSenderID);
 	}
 
 	@Post('decline/:senderID')
 	declineFriendsRequest(
 		@Request() req: IAuthenticatedRequest,
-		@Param('senderID') senderID: Types.ObjectId,
+		@Param('senderID') senderID: string,
 	) {
 		const recipientID = req.user._id;
+		const objectSenderID = new Types.ObjectId(senderID);
 
-		return this.friendsService.declineFriendsRequest(recipientID, senderID);
+		return this.friendsService.declineFriendsRequest(recipientID, objectSenderID);
 	}
 
 	@Post('cancel/:senderID')
 	cancelFriendsRequest(
 		@Request() req: IAuthenticatedRequest,
-		@Param('senderID') senderID: Types.ObjectId,
+		@Param('senderID') senderID: string,
 	) {
 		const recipientID = req.user._id;
+		const objectSenderID = new Types.ObjectId(senderID);
 
 		/** Просто меняю местами агрументы */
-		return this.friendsService.declineFriendsRequest(senderID, recipientID);
+		return this.friendsService.declineFriendsRequest(objectSenderID, recipientID);
 	}
 }
