@@ -5,6 +5,8 @@ import { ConfigModule } from '@nestjs/config';
 import { NotesModule } from './notes/notes.module';
 import { AuthModule } from './auth/auth.module';
 import { FriendsModule } from './friends/friends.module';
+import { CalendarsModule } from './calendars/calendars.module';
+import { EventsModule } from './events/events.module';
 import { SpacesModule } from './spaces/spaces.module';
 import * as process from 'node:process';
 
@@ -21,6 +23,8 @@ import * as process from 'node:process';
 		AuthModule,
 		FriendsModule,
 		SpacesModule,
+		CalendarsModule,
+		EventsModule,
 	],
 })
 export class AppModule {}

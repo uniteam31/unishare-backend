@@ -1,4 +1,4 @@
-FROM node
+FROM --platform=linux/amd64 node:22
 
 # При деплое ОБЯЗАТЕЛЬНО указывать все ENV через Jenkins
 # Ставится в pipeline на Jenkins

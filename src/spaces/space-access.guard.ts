@@ -17,8 +17,6 @@ export class SpaceAccessGuard implements CanActivate {
 			.getUserSpacesIDs(userID)
 			.then((res) => res.map((id) => String(id)));
 
-		console.log({ userSpacesIDs, currentSpaceID, userID });
-
 		if (!userSpacesIDs.includes(String(currentSpaceID))) {
 			throw new ForbiddenException('Вы не имеете доступа к этому пространству');
 		}
