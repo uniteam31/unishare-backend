@@ -27,6 +27,9 @@ export class Event {
 	description?: string;
 
 	@Prop()
+	color?: string;
+
+	@Prop()
 	interval?: number;
 
 	@Prop()
