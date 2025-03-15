@@ -4,6 +4,7 @@ export class CreateEventDto {
 	readonly startTime: string;
 	readonly endTime?: string;
 	readonly description?: string;
+	readonly color?: string;
 
 	/** Recursive event */
 	readonly interval?: number;
