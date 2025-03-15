@@ -8,6 +8,8 @@ import {
 	Put,
 	Request,
 	UseGuards,
+	UsePipes,
+	ValidationPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { IAuthenticatedRequest } from '../auth/types/authenticated-request.interface';
@@ -56,6 +58,7 @@ export class CalendarsController {
 	}
 
 	@Put('events/:id')
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: false }))
 	async updateEvent(
 		@Body() updateEventDto: UpdateEventDto,
 		@Request() req: IAuthenticatedRequest,
