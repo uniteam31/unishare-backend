@@ -1,4 +1,4 @@
-import { IsOptional, Length } from 'class-validator';
+import { IsOptional, Length, IsString, IsISO8601 } from 'class-validator';
 
 export class CreateEventDto {
 	/** Simple event */
@@ -6,10 +6,19 @@ export class CreateEventDto {
 	@Length(1, 32, { message: 'Название должно быть от 2 до 32 символов' })
 	readonly title?: string;
 
+	@IsString({ message: 'Поле startTime должно быть строкой' })
+	@IsISO8601(
+		{ strict: true },
+		{ message: 'Поле startTime должно быть в формате ISO 8601 (YYYY-MM-DDTHH:mm:ssZ)' },
+	)
 	readonly startTime: string;
 
 	@IsOptional()
-	readonly endTime: string;
+	@IsISO8601(
+		{ strict: true },
+		{ message: 'Поле endTime должно быть в формате ISO 8601 (YYYY-MM-DDTHH:mm:ssZ)' },
+	)
+	readonly endTime?: string;
 
 	@IsOptional()
 	readonly description?: string;
