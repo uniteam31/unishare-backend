@@ -1,22 +1,27 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { User } from '../users/user.schema';
-import { InjectModel } from '@nestjs/mongoose';
-import { Event } from './event.schema';
-import { Model, Types } from 'mongoose';
 import { CreateEventDto } from './dto/create-event-dto';
 import { UpdateEventDto } from './dto/update-event-dto';
+import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class EventsService {
-	constructor(@InjectModel(Event.name) private eventModel: Model<Event>) {}
+	constructor(private prisma: PrismaService) {}
 
-	async getEventsByOwnerID(ownerID: User['_id']) {
-		const userEvents = await this.eventModel.find({ ownerID });
+	private async getEventsByOwnerID(ownerID: string) {
+		const userEvents = await this.prisma.calendarEvent.findMany({ where: { ownerID } });
 		return userEvents;
 	}
 
-	async getPersonalUserEvent(ownerID: Types.ObjectId, eventID: Types.ObjectId) {
-		const event = await this.eventModel.findOne({ _id: eventID, ownerID });
+	async getPersonalUserEvents(userID: string) {
+		const events = await this.getEventsByOwnerID(userID);
+
+		return events;
+	}
+
+	async getPersonalUserEvent(ownerID: string, eventID: string) {
+		const event = await this.prisma.calendarEvent.findFirst({
+			where: { id: eventID, ownerID },
+		});
 
 		// TODO возможно в будущем есть смысл разделить "не найдено" и "нет прав"
 		if (!event) {
@@ -26,22 +31,24 @@ export class EventsService {
 		return event;
 	}
 
-	async createEvent(ownerID: Types.ObjectId, event: CreateEventDto) {
-		const newEvent = new this.eventModel({ ...event, ownerID });
+	async createEvent(ownerID: string, event: CreateEventDto) {
+		const newEvent = await this.prisma.calendarEvent.create({
+			data: {
+				...event,
+				owner: { connect: { id: ownerID } },
+			},
+		});
 
-		return await newEvent.save();
+		return newEvent;
 	}
 
-	async updateEvent(
-		ownerID: Types.ObjectId,
-		eventID: Types.ObjectId,
-		updateEventDto: UpdateEventDto,
-	) {
-		const updatedEvent = await this.eventModel.findOneAndUpdate(
-			{ _id: eventID, ownerID: ownerID },
-			{ $set: { ...updateEventDto } },
-			{ new: true },
-		);
+	async updateEvent(ownerID: string, eventID: string, updateEventDto: UpdateEventDto) {
+		const updatedEvent = await this.prisma.calendarEvent.update({
+			where: { id: eventID, ownerID },
+			data: {
+				...updateEventDto,
+			},
+		});
 
 		if (!updatedEvent) {
 			throw new NotFoundException(
@@ -52,8 +59,10 @@ export class EventsService {
 		return updatedEvent;
 	}
 
-	async deleteEvent(ownerID: Types.ObjectId, eventID: Types.ObjectId) {
-		const deletedEvent = await this.eventModel.findOneAndDelete({ _id: eventID, ownerID });
+	async deleteEvent(ownerID: string, eventID: string) {
+		const deletedEvent = await this.prisma.calendarEvent.delete({
+			where: { id: eventID, ownerID },
+		});
 
 		// TODO возможно в будущем есть смысл разделить "не найдено" и "нет прав"
 		if (!deletedEvent) {

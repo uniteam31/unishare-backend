@@ -5,113 +5,133 @@ import {
 	Injectable,
 	NotFoundException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { User } from './user.schema';
-import { Model, Types } from 'mongoose';
 import { CreateUserDto } from './dto/create-user-dto';
-import { formatResponse } from '../common/utils/response.util';
 import { FriendsService } from '../friends/friends.service';
-import type { FriendStatus } from '../friends/types/friend.types';
 import { UpdateUserPersonalDataDto } from './dto/update-user-personal-data-dto';
 import { UpdateUserAuthenticationDataDto } from './dto/update-user-authentication-data-dto';
 import { SpacesService } from '../spaces/spaces.service';
-import { CreateSpaceDto } from '../spaces/dto/create-space-dto';
+import { PrismaService } from '../prisma.service';
+import { Space, User } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
 	constructor(
-		@InjectModel(User.name) private userModel: Model<User>,
 		@Inject(forwardRef(() => FriendsService)) private friendsService: FriendsService,
 		@Inject(forwardRef(() => SpacesService)) private spacesService: SpacesService,
+		private prisma: PrismaService,
 	) {}
 
-	async createUser(createUserDto: CreateUserDto): Promise<User> {
-		const createdUser = await this.userModel.create({ personalSpaceID: -1, ...createUserDto });
+	private async updateUserData(userID: string, userData: Partial<User>) {
+		const updatedUser = await this.prisma.user.update({
+			where: { id: userID },
+			data: userData,
+		});
 
-		const personalSpace: CreateSpaceDto = {
-			name: createdUser.username,
-			membersIDs: [],
-		};
+		return updatedUser;
+	}
+
+	async createUser(createUserDto: CreateUserDto) {
+		const createdUser = await this.prisma.user.create({
+			data: {
+				...createUserDto,
+			},
+		});
 
 		/** У каждого пользователя при регистрации создается личное пространство под его именем */
-		const createdSpace = await this.spacesService.createSpace(createdUser._id, personalSpace);
+		await this.prisma.space.create({
+			data: {
+				name: createdUser.username,
+				ownerID: createdUser.id,
+				type: 'PERSONAL',
+				members: { create: { userID: createdUser.id } },
+			},
+		});
 
-		const user = await this.userModel.findOneAndUpdate(
-			{ _id: createdUser._id },
-			{ personalSpaceID: createdSpace._id },
-			{ new: true },
-		);
-
-		/** здесь exec() не нужен, потому что мы уже знаем, что выполняем асинхронную операцию */
-		return user;
+		return createdUser;
 	}
 
 	async getUserByEmail(email: string) {
-		return this.userModel.findOne({ email }).exec();
+		return this.prisma.user.findFirst({ where: { email } });
 	}
 
 	async getUserByUsername(username: string) {
-		return this.userModel.findOne({ username }).exec();
+		return this.prisma.user.findFirst({ where: { username } });
 	}
 
-	async getUserByID(id: Types.ObjectId) {
-		return this.userModel.findById(id).exec();
+	async getUserByID(id: string) {
+		return this.prisma.user.findFirst({ where: { id } });
 	}
 
-	async getUsersByUsernameWithFriendStatus(
-		ownerID: Types.ObjectId,
-		username: User['username'] = '',
-	) {
-		const foundedUsers = await this.userModel
-			.find({ username: { $regex: username, $options: 'i' } })
-			.select('_id avatar username firstName')
-			.lean();
+	async getUserPersonalSpace(id: string): Promise<Space> {
+		return this.prisma.space.findFirst({
+			where: { ownerID: id, type: 'PERSONAL' },
+		});
+	}
 
-		const ownerFriendsEntity = await this.friendsService.getFriendsEntity(ownerID);
+	async getUserSpacesIDs(id: string) {
+		const spaces = await this.prisma.space.findMany({ where: { ownerID: id } });
 
-		const foundUsersWithFriendStatus = foundedUsers.map((user) => {
-			let friendStatus: FriendStatus = null;
+		return spaces.map((space) => space.id);
+	}
 
-			if (ownerFriendsEntity.incomingRequestsUserIDs.includes(user._id)) {
-				friendStatus = 'pendingAcceptance';
+	async getUserSpaces(id: string) {
+		return this.prisma.space.findMany({ where: { ownerID: id } });
+	}
+
+	// TODO: вернуть поиск по имени пользователя
+	// TODO: refactoring
+	// TODO: взять friendStatus из БД
+	async getUsersByUsernameWithFriendStatus(userID: string) {
+		const foundedUsers = await this.prisma.user.findMany({
+			where: { NOT: { id: userID } },
+		});
+
+		const incomingFriendsRequesters =
+			await this.friendsService.getUserIncomingFriendsRequesters(userID);
+
+		const outgoingFriendsRequesters =
+			await this.friendsService.getUserOutgoingFriendsRequesters(userID);
+
+		const userFriendsIDs = await this.friendsService.getUserFriendsIDs(userID);
+
+		const users = foundedUsers.map((user) => {
+			if (incomingFriendsRequesters.find((incomingUser) => incomingUser.id === user.id)) {
+				return {
+					...user,
+					friendStatus: 'pendingAcceptance',
+				};
 			}
 
-			if (ownerFriendsEntity.outgoingRequestsUserIDs.includes(user._id)) {
-				friendStatus = 'sent';
+			if (outgoingFriendsRequesters.some((outgoingUser) => outgoingUser.id === user.id)) {
+				return {
+					...user,
+					friendStatus: 'sent',
+				};
 			}
 
-			if (ownerFriendsEntity.friends.includes(user._id)) {
-				friendStatus = 'friend';
+			if (userFriendsIDs.includes(user.id)) {
+				return {
+					...user,
+					friendStatus: 'friend',
+				};
 			}
 
 			return {
 				...user,
-				friendStatus,
+				friendStatus: null,
 			};
 		});
 
-		return formatResponse(foundUsersWithFriendStatus, 'Список успешно получен');
-	}
-
-	async getUserPersonalData(userID: Types.ObjectId) {
-		const personalData = await this.userModel
-			.findOne({ _id: userID })
-			.select('_id avatar username firstName lastName');
-
-		if (!personalData) {
-			throw new NotFoundException('Такой пользователь не найден или у вас нет доступа');
-		}
-
-		return personalData;
+		return users;
 	}
 
 	async updateUserPersonalData(
-		userID: Types.ObjectId,
+		userID: string,
 		updateUserPersonalDataDto: UpdateUserPersonalDataDto,
 	) {
 		if (updateUserPersonalDataDto.username) {
-			const candidate = await this.userModel.findOne({
-				username: updateUserPersonalDataDto.username,
+			const candidate = await this.prisma.user.findFirst({
+				where: { username: updateUserPersonalDataDto.username },
 			});
 
 			if (candidate) {
@@ -121,13 +141,7 @@ export class UsersService {
 			}
 		}
 
-		const updatedPersonalData = await this.userModel
-			.findOneAndUpdate(
-				{ _id: userID },
-				{ $set: { ...updateUserPersonalDataDto } },
-				{ new: true },
-			)
-			.select('_id avatar username firstName lastName');
+		const updatedPersonalData = await this.updateUserData(userID, updateUserPersonalDataDto);
 
 		if (!updatedPersonalData) {
 			throw new NotFoundException(
@@ -138,29 +152,14 @@ export class UsersService {
 		return updatedPersonalData;
 	}
 
-	async getUserAuthenticationData(userID: Types.ObjectId) {
-		const authenticationData = await this.userModel
-			.findOne({ _id: userID })
-			.select('email educationalEmail');
-
-		if (!authenticationData) {
-			throw new NotFoundException('Такой пользователь не найден или у вас нет доступа');
-		}
-
-		return authenticationData;
-	}
-
 	async updateUserAuthenticationData(
-		userID: Types.ObjectId,
+		userID: string,
 		updateUserAuthenticationDataDto: UpdateUserAuthenticationDataDto,
 	) {
-		const updatedAuthenticationData = await this.userModel
-			.findOneAndUpdate(
-				{ _id: userID },
-				{ $set: { ...updateUserAuthenticationDataDto } },
-				{ new: true },
-			)
-			.select('email educationalEmail');
+		const updatedAuthenticationData = await this.updateUserData(
+			userID,
+			updateUserAuthenticationDataDto,
+		);
 
 		if (!updatedAuthenticationData) {
 			throw new NotFoundException(
@@ -169,37 +168,5 @@ export class UsersService {
 		}
 
 		return updatedAuthenticationData;
-	}
-
-	async getUserSpacesIDs(userID: Types.ObjectId) {
-		const user = await this.userModel.findOne({ _id: userID });
-
-		if (!user) {
-			throw new NotFoundException('Такой пользователь не найден');
-		}
-
-		return user.spacesIDs;
-	}
-
-	async getUserSpaces(userID: Types.ObjectId) {
-		const user = await this.userModel.findOne({ _id: userID });
-
-		if (!user) {
-			throw new NotFoundException('Такой пользователь не найден');
-		}
-
-		const spaces = await user
-			.populate({
-				path: 'spacesIDs',
-				select: '_id name ownerID membersIDs',
-				model: 'Space',
-			})
-			.then((res) => res.spacesIDs);
-
-		return spaces;
-	}
-
-	async addSpaceIDToUser(userID: Types.ObjectId, spaceID: Types.ObjectId) {
-		await this.userModel.findOneAndUpdate({ _id: userID }, { $push: { spacesIDs: spaceID } });
 	}
 }

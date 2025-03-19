@@ -1,48 +1,43 @@
 import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { Space } from './space.schema';
 import { CreateSpaceDto } from './dto/create-space-dto';
 import { FriendsService } from '../friends/friends.service';
 import { UsersService } from '../users/users.service';
+import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class SpacesService {
 	constructor(
-		@InjectModel(Space.name) private spaceModel: Model<Space>,
 		@Inject(forwardRef(() => FriendsService)) private friendsService: FriendsService,
 		@Inject(forwardRef(() => UsersService)) private usersService: UsersService,
+		private prisma: PrismaService,
 	) {}
 
-	async createSpace(userID: Types.ObjectId, body: CreateSpaceDto) {
-		const objectedMembersIDs = body.membersIDs.map((id) => new Types.ObjectId(id));
-
-		const creatorIDFriendsEntity = await this.friendsService.getFriendsEntity(userID);
+	async createSpace(userID: string, body: CreateSpaceDto) {
+		const creatorFriends = await this.friendsService.getUserFriendsIDs(userID);
 
 		// Преобразуем friends в Set строк
-		const friendsSet = new Set(
-			creatorIDFriendsEntity.friends.map((friend) => friend.toString()),
-		);
+		const friendsSet = new Set(creatorFriends.map((friend) => friend.toString()));
 
-		for (const memberID of objectedMembersIDs) {
-			if (!friendsSet.has(memberID.toString())) {
+		for (const memberID of body.membersIDs) {
+			if (!friendsSet.has(memberID)) {
 				throw new NotFoundException(
 					'Вы не можете добавить не вашего друга в пространство без приглашения',
 				);
 			}
 		}
 
-		const createdSpace = await this.spaceModel.create({
-			ownerID: userID,
-			membersIDs: [userID, ...objectedMembersIDs],
-			name: body.name,
+		const createdSpace = await this.prisma.space.create({
+			data: {
+				name: body.name,
+				ownerID: userID,
+				type: 'PUBLIC',
+				members: {
+					create: body.membersIDs.map((memberID) => ({
+						userID: memberID,
+					})),
+				},
+			},
 		});
-
-		this.usersService.addSpaceIDToUser(userID, createdSpace._id).finally();
-
-		for (const memberID of objectedMembersIDs) {
-			this.usersService.addSpaceIDToUser(memberID, createdSpace._id).finally();
-		}
 
 		return createdSpace;
 	}

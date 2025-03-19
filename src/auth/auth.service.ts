@@ -4,15 +4,14 @@ import { CreateUserDto } from '../users/dto/create-user-dto';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { User } from '../users/user.schema';
-import { Types } from 'mongoose';
 import { ApiResponse } from '../common/utils/response.type';
 import { formatResponse } from '../common/utils/response.util';
+import { User, Space } from '@prisma/client';
 
 type TUserInitialData = {
 	firstName: User['firstName'];
 	username: User['username'];
-	personalSpaceID: User['personalSpaceID'];
+	personalSpaceID: Space['id'];
 };
 
 @Injectable()
@@ -22,18 +21,20 @@ export class AuthService {
 		private jwtService: JwtService,
 	) {}
 
-	async init(userID: Types.ObjectId): Promise<ApiResponse<TUserInitialData>> {
+	async init(userID: string): Promise<ApiResponse<TUserInitialData>> {
 		const user = await this.usersService.getUserByID(userID);
+		const personalSpace = await this.usersService.getUserPersonalSpace(userID);
+		const userSpacesIDs = await this.usersService.getUserSpacesIDs(userID);
 
 		// TODO cделать populate по spacesIDs
 		return formatResponse(
 			{
-				_id: userID,
+				id: userID,
 				username: user.username,
 				firstName: user.firstName,
 				avatar: user.avatar,
-				personalSpaceID: user.personalSpaceID,
-				spacesIDs: user.spacesIDs,
+				personalSpaceID: personalSpace.id,
+				spacesIDs: userSpacesIDs,
 			},
 			'Пользователь инициализирован',
 		);
@@ -73,7 +74,7 @@ export class AuthService {
 	}
 
 	private async generateToken(user: User): Promise<string> {
-		const payload = { _id: user._id };
+		const payload = { id: user.id };
 
 		return this.jwtService.sign(payload);
 	}

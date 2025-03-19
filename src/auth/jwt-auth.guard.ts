@@ -1,7 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { TJwtPayload } from './types/auth.types';
-import { Types } from 'mongoose';
 
 /** Если возвращает false, то доступ запрещен, иначе разрешен и выставляет в req информацию о пользователе и пространствах */
 @Injectable()
@@ -23,7 +22,6 @@ export class JwtAuthGuard implements CanActivate {
 
 			/** Расшифровываю информацию из jwt токена */
 			const decodedToken = this.jwtService.verify<TJwtPayload>(token);
-			decodedToken._id = new Types.ObjectId(decodedToken._id);
 
 			/** Кладу информацию для работы с endpoints в поле user */
 			req.user = decodedToken;
@@ -31,11 +29,7 @@ export class JwtAuthGuard implements CanActivate {
 			/** Получаю информацию о текущем пространстве из куки */
 			// TODO сделать импорт из shared-toolkit
 			const currentSpaceID = req.cookies['currentSpaceID'];
-			const isValidObjectIDString = Types.ObjectId.isValid(currentSpaceID);
-
-			if (isValidObjectIDString) {
-				req.currentSpaceID = new Types.ObjectId(currentSpaceID);
-			}
+			req.currentSpaceID = currentSpaceID;
 
 			return true;
 		} catch (e) {

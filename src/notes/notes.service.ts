@@ -1,49 +1,38 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { Note } from './note.schema';
 import { CreateNoteDto } from './dto/create-note-dto';
 import { UpdateNoteDto } from './dto/update-note-dto';
 import { formatResponse } from '../common/utils/response.util';
 import { ApiResponse } from '../common/utils/response.type';
+import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class NotesService {
-	constructor(@InjectModel(Note.name) private noteModel: Model<Note>) {}
+	constructor(private prisma: PrismaService) {}
 
-	async createNote(
-		createNoteDto: CreateNoteDto,
-		ownerID: Types.ObjectId,
-		currentSpaceID: Types.ObjectId,
-	): Promise<ApiResponse<Note>> {
-		const createdNote = new this.noteModel({
-			...createNoteDto,
-
-			ownerID,
-			spacesIDs: [currentSpaceID],
+	async createNote(createNoteDto: CreateNoteDto, ownerID: string, currentSpaceID: string) {
+		const createdNote = await this.prisma.note.create({
+			data: { ...createNoteDto, ownerID, spaceID: currentSpaceID },
 		});
 
-		return formatResponse<Note>(await createdNote.save(), 'Заметка успешно создана');
+		return formatResponse(createdNote, 'Заметка успешно создана');
 	}
 
-	async getSpaceNotes(currentSpaceID: Types.ObjectId): Promise<ApiResponse<Note[]>> {
-		const userNotes = await this.noteModel
-			.find({ spacesIDs: currentSpaceID })
-			.sort({ createdAt: -1 });
+	async getSpaceNotes(currentSpaceID: string) {
+		const userNotes = await this.prisma.note.findMany({
+			where: { spaceID: currentSpaceID },
+			orderBy: { createdAt: 'desc' },
+		});
 
-		return formatResponse<Note[]>(userNotes, '');
+		return formatResponse(userNotes, '');
 	}
 
-	async updateSpaceNote(
-		noteID: Types.ObjectId,
-		ownerID: Types.ObjectId,
-		updateNoteDto: UpdateNoteDto,
-	): Promise<ApiResponse<Note>> {
-		const updatedNote = await this.noteModel.findOneAndUpdate(
-			{ _id: noteID, ownerID },
-			{ $set: { ...updateNoteDto } },
-			{ new: true },
-		);
+	async updateSpaceNote(noteID: string, ownerID: string, updateNoteDto: UpdateNoteDto) {
+		const updatedNote = await this.prisma.note.update({
+			where: { id: noteID, ownerID },
+			data: {
+				...updateNoteDto,
+			},
+		});
 
 		if (!updatedNote) {
 			throw new NotFoundException(
@@ -51,17 +40,11 @@ export class NotesService {
 			);
 		}
 
-		return formatResponse<Note>(updatedNote, 'Заметка успешно обновлена');
+		return formatResponse(updatedNote, 'Заметка успешно обновлена');
 	}
 
-	async deleteSpaceNote(
-		noteID: Types.ObjectId,
-		ownerID: Types.ObjectId,
-	): Promise<ApiResponse<null>> {
-		const deletedNote = await this.noteModel.findOneAndDelete({
-			_id: noteID,
-			ownerID,
-		});
+	async deleteSpaceNote(noteID: string, ownerID: string): Promise<ApiResponse<null>> {
+		const deletedNote = await this.prisma.note.delete({ where: { id: noteID, ownerID } });
 
 		if (!deletedNote) {
 			throw new NotFoundException('Заметка не найдена или у вас нет прав для ее удаления');
