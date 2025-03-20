@@ -3,6 +3,7 @@ import {
 	Controller,
 	Get,
 	Put,
+	Query,
 	Request,
 	UseGuards,
 	UsePipes,
@@ -23,10 +24,14 @@ export class UsersController {
 	constructor(private usersService: UsersService) {}
 
 	@Get('')
-	async getUsersByUsernameWithFriendStatus(@Request() req: IAuthenticatedRequest) {
+	async getUsersByUsernameWithFriendStatus(
+		@Request() req: IAuthenticatedRequest,
+		@Query() query: { username: string },
+	) {
 		const userID = req.user.id;
+		const { username } = query;
 
-		const users = await this.usersService.getUsersByUsernameWithFriendStatus(userID);
+		const users = await this.usersService.getUsersByUsernameWithFriendStatus(userID, username);
 
 		return formatResponse(
 			plainToInstance(PublicFriendDto, users, { excludeExtraneousValues: true }),

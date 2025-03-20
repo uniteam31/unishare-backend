@@ -69,21 +69,24 @@ export class UsersService {
 	}
 
 	async getUserSpacesIDs(id: string) {
-		const spaces = await this.prisma.space.findMany({ where: { ownerID: id } });
+		const spaces = await this.prisma.space.findMany({
+			where: { OR: [{ ownerID: id }, { members: { some: { userID: id } } }] },
+		});
 
 		return spaces.map((space) => space.id);
 	}
 
 	async getUserSpaces(id: string) {
-		return this.prisma.space.findMany({ where: { ownerID: id } });
+		return this.prisma.space.findMany({
+			where: { OR: [{ ownerID: id }, { members: { some: { userID: id } } }] },
+		});
 	}
 
-	// TODO: вернуть поиск по имени пользователя
 	// TODO: refactoring
 	// TODO: взять friendStatus из БД
-	async getUsersByUsernameWithFriendStatus(userID: string) {
+	async getUsersByUsernameWithFriendStatus(userID: string, username = '') {
 		const foundedUsers = await this.prisma.user.findMany({
-			where: { NOT: { id: userID } },
+			where: { NOT: { id: userID }, username: { contains: username, mode: 'insensitive' } },
 		});
 
 		const incomingFriendsRequesters =
