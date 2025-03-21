@@ -31,7 +31,7 @@ export class UpdateEventDto {
 	readonly interval?: number;
 
 	@IsOptional()
-	readonly period?: 'day' | 'week' | 'month' | 'year';
+	readonly period?: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR';
 
 	@IsOptional()
 	readonly days?: number[];

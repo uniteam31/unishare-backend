@@ -12,7 +12,7 @@ export class SpacesController {
 
 	@Post()
 	async createSpace(@Request() req: IAuthenticatedRequest, @Body() body: CreateSpaceDto) {
-		const creatorID = req.user._id;
+		const creatorID = req.user.id;
 
 		const createdSpace = await this.spacesService.createSpace(creatorID, body);
 

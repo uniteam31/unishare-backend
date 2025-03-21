@@ -1,231 +1,170 @@
-import {
-	BadRequestException,
-	forwardRef,
-	Inject,
-	Injectable,
-	NotFoundException,
-} from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { Friend } from './friend.schema';
-import { UsersService } from '../users/users.service';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { formatResponse } from '../common/utils/response.util';
-import type { User } from '../users/user.schema';
-import type { PublicUser } from '../users/types/user.types';
+import { PrismaService } from '../prisma.service';
+import type { User, Prisma, FriendRequest } from '@prisma/client';
+
+export type FriendsWithUsers = Prisma.FriendsGetPayload<{
+	include: { senderUser: true; accepterUser: true };
+}>;
+
+export type FriendRequestWithUsers = Prisma.FriendRequestGetPayload<{
+	include: { fromUser: true; toUser: true };
+}>;
 
 @Injectable()
 export class FriendsService {
-	constructor(
-		@InjectModel(Friend.name) private friendModel: Model<Friend>,
-		@Inject(forwardRef(() => UsersService)) private usersService: UsersService,
-	) {}
+	constructor(private prisma: PrismaService) {}
 
-	private async checkFriendsEntityAndCreateIfEmpty(ownerID: Types.ObjectId) {
-		const friendsEntity = await this.friendModel.findOne({ ownerID });
-
-		if (!friendsEntity) {
-			const user = await this.usersService.getUserByID(ownerID);
-
-			if (!user) {
-				throw new NotFoundException('Пользователь не найден');
-			}
-
-			await this.createFriendsEntity(ownerID);
-		}
+	private getFriendFromRelationship(friend: FriendsWithUsers, userID: string): User {
+		return friend.accepterUserID === userID ? friend.senderUser : friend.accepterUser;
 	}
 
-	private async createFriendsEntity(ownerID: Types.ObjectId) {
-		const newFriendEntity = new this.friendModel({
-			ownerID,
+	private getRequesterFromUser(friend: FriendRequestWithUsers, userID: string): User {
+		return friend.toUserID === userID ? friend.fromUser : friend.toUser;
+	}
+
+	private async getFriends(userID: string): Promise<User[]> {
+		const friends = await this.prisma.friends.findMany({
+			where: {
+				OR: [{ accepterUserID: userID }, { senderUserID: userID }],
+			},
+			include: {
+				senderUser: true,
+				accepterUser: true,
+			},
 		});
 
-		return newFriendEntity.save();
+		return friends.map((friend) => this.getFriendFromRelationship(friend, userID));
 	}
 
-	async getFriendsEntity(ownerID: Types.ObjectId) {
-		await this.checkFriendsEntityAndCreateIfEmpty(ownerID);
-
-		const friendsEntity = await this.friendModel.findOne({ ownerID });
-		return friendsEntity;
-	}
-
-	/** Если сущности друзей нет, то создает новую для пользователя */
-	async getFriendsListByOwnerID(ownerID: Types.ObjectId, username: User['username'] = '') {
-		await this.checkFriendsEntityAndCreateIfEmpty(ownerID);
-
-		const friendsEntity = await this.friendModel.findOne({ ownerID });
-
-		const populatedFriendsEntity = await friendsEntity.populate<{ friends: PublicUser[] }>({
-			path: 'friends',
-			select: 'firstName username avatar',
-			model: 'User', // ОБЯЗАТЕЛЬНО указывать модель при populate
+	private async getIncomingFriendRequesters(userID: string): Promise<User[]> {
+		const incomingRequests = await this.prisma.friendRequest.findMany({
+			where: { toUserID: userID },
+			include: {
+				fromUser: true,
+				toUser: true,
+			},
 		});
 
-		const leanFriendsEntity = populatedFriendsEntity.toObject<{ friends: PublicUser[] }>();
+		return incomingRequests.map((request) => this.getRequesterFromUser(request, userID));
+	}
 
-		const filteredFriends = leanFriendsEntity.friends.filter((friend) =>
-			new RegExp(username, 'i').test(friend.username),
-		);
+	private async getOutgoingFriendRequesters(userID: string): Promise<User[]> {
+		const outgoingRequests = await this.prisma.friendRequest.findMany({
+			where: { fromUserID: userID },
+			include: {
+				fromUser: true,
+				toUser: true,
+			},
+		});
 
-		const friendsListWithFriendsStatus = filteredFriends.map((friend) => ({
-			...friend,
-			friendStatus: 'friend',
+		return outgoingRequests.map((request) => this.getRequesterFromUser(request, userID));
+	}
+
+	private async getFriendRequestBetweenUsers(
+		fromUserID: string,
+		toUserID: string,
+	): Promise<FriendRequest> {
+		return this.prisma.friendRequest.findFirst({
+			where: {
+				OR: [
+					{ AND: [{ fromUserID }, { toUserID }] },
+					{ AND: [{ fromUserID: toUserID }, { toUserID: fromUserID }] },
+				],
+			},
+		});
+	}
+
+	async getUserFriendsIDs(userID: string): Promise<string[]> {
+		const friendsList = await this.getFriends(userID);
+
+		return friendsList.map((friend) => friend.id);
+	}
+
+	async getUserFriendsWithFriendStatus(userID: string) {
+		const friendsList = await this.getFriends(userID);
+
+		return friendsList.map((friend) => ({ ...friend, friendStatus: 'friend' }));
+	}
+
+	async getUserIncomingFriendsRequesters(userID: string): Promise<User[]> {
+		const incomingFriendsRequests = await this.getIncomingFriendRequesters(userID);
+
+		return incomingFriendsRequests.map((request) => ({
+			...request,
+			friendStatus: 'pendingAcceptance',
 		}));
-
-		return formatResponse(friendsListWithFriendsStatus, 'Список получен успешно');
 	}
 
-	async getPersonalIncomingFriendsRequests(ownerID: Types.ObjectId) {
-		await this.checkFriendsEntityAndCreateIfEmpty(ownerID);
+	async getUserOutgoingFriendsRequesters(userID: string): Promise<User[]> {
+		const outgoingFriendsRequests = await this.getOutgoingFriendRequesters(userID);
 
-		const friendsEntity = await this.friendModel.findOne({ ownerID });
+		return outgoingFriendsRequests.map((request) => ({ ...request, friendStatus: 'sent' }));
+	}
 
-		const populatedFriends = await friendsEntity.populate<{
-			incomingRequestsUserIDs: PublicUser[];
-		}>({
-			path: 'incomingRequestsUserIDs',
-			select: '_id firstName username avatar',
-			model: 'User', // ОБЯЗАТЕЛЬНО указывать модель при populate
+	async sendFriendsRequest(fromUserID: string, toUserID: string) {
+		/** проверяем, существует ли уже запрос на дружбу в любом направлении */
+		const existingRequest = await this.getFriendRequestBetweenUsers(fromUserID, toUserID);
+
+		if (existingRequest) {
+			throw new BadRequestException('Запрос на дружбу уже существует');
+		}
+
+		await this.prisma.friendRequest.create({
+			data: {
+				fromUserID,
+				toUserID,
+			},
 		});
-
-		const leanFriendsEntity = populatedFriends.toObject<{
-			incomingRequestsUserIDs: PublicUser[];
-		}>();
-
-		const incomingRequestsWithFriendStatus = leanFriendsEntity.incomingRequestsUserIDs.map(
-			(request) => ({
-				...request,
-				friendStatus: 'pendingAcceptance',
-			}),
-		);
-
-		return formatResponse(incomingRequestsWithFriendStatus, 'Запросы успешно получены');
-	}
-
-	async getPersonalOutgoingFriendsRequests(ownerID: Types.ObjectId) {
-		await this.checkFriendsEntityAndCreateIfEmpty(ownerID);
-
-		const friendsEntity = await this.friendModel.findOne({ ownerID });
-
-		const populatedFriends = await friendsEntity.populate<{
-			outgoingRequestsUserIDs: PublicUser[];
-		}>({
-			path: 'outgoingRequestsUserIDs',
-			select: '_id firstName username avatar',
-			model: 'User', // ОБЯЗАТЕЛЬНО указывать модель при populate
-		});
-
-		const leanFriendsEntity = populatedFriends.toObject<{
-			outgoingRequestsUserIDs: PublicUser[];
-		}>();
-
-		// TODO можно вынести в функцию
-		const outgoingRequestsWithFriendStatus = leanFriendsEntity.outgoingRequestsUserIDs.map(
-			(request) => ({
-				...request,
-				friendStatus: 'sent',
-			}),
-		);
-
-		return formatResponse(outgoingRequestsWithFriendStatus, 'Запросы успешно получены');
-	}
-
-	async sendFriendsRequest(senderID: Types.ObjectId, recipientID: Types.ObjectId) {
-		await this.checkFriendsEntityAndCreateIfEmpty(senderID);
-		await this.checkFriendsEntityAndCreateIfEmpty(recipientID);
-
-		const senderFriendsEntity = await this.friendModel.findOne({ ownerID: senderID });
-
-		if (recipientID === senderID) {
-			throw new BadRequestException(
-				'Вы не можете добавить в друзья самого себя! Как вы вообще это сделали? :)',
-			);
-		}
-
-		if (senderFriendsEntity.incomingRequestsUserIDs.includes(recipientID)) {
-			return this.acceptFriendsRequest(senderID, recipientID);
-		}
-
-		if (senderFriendsEntity.friends.includes(recipientID)) {
-			throw new BadRequestException('Этот пользователь уже у вас в друзьях');
-		}
-
-		// TODO если пользователю уже отправляли запрос -> уведомлять об этом
-		await this.friendModel.updateOne(
-			{ ownerID: senderID },
-			{ $addToSet: { outgoingRequestsUserIDs: recipientID } },
-		);
-
-		await this.friendModel.updateOne(
-			{ ownerID: recipientID },
-			{ $addToSet: { incomingRequestsUserIDs: senderID } },
-		);
 
 		return formatResponse(null, 'Запрос успешно отправлен');
 	}
 
-	async acceptFriendsRequest(recipientID: Types.ObjectId, senderID: Types.ObjectId) {
-		await this.checkFriendsEntityAndCreateIfEmpty(recipientID);
-		await this.checkFriendsEntityAndCreateIfEmpty(senderID);
+	async acceptFriendsRequest(toUserID: string, fromUserID: string) {
+		const request = await this.getFriendRequestBetweenUsers(fromUserID, toUserID);
 
-		const recipientUpdateResult = await this.friendModel.updateOne(
-			{
-				ownerID: recipientID,
-				incomingRequestsUserIDs: senderID,
-			},
-			{
-				$addToSet: { friends: senderID },
-				$pull: { incomingRequestsUserIDs: senderID },
-			},
-		);
-
-		if (recipientUpdateResult.modifiedCount === 0) {
+		if (!request) {
 			throw new BadRequestException('Заявка на добавление в друзья не найдена');
 		}
 
-		await this.friendModel.updateOne(
-			{
-				ownerID: senderID,
-				outgoingRequestsUserIDs: recipientID,
+		await this.prisma.friends.create({
+			data: { senderUserID: fromUserID, accepterUserID: toUserID },
+		});
+
+		await this.prisma.friendRequest.deleteMany({
+			where: {
+				OR: [
+					{ AND: [{ fromUserID }, { toUserID }] },
+					{ AND: [{ fromUserID: toUserID }, { toUserID: fromUserID }] },
+				],
 			},
-			{
-				$addToSet: { friends: recipientID },
-				$pull: { outgoingRequestsUserIDs: recipientID },
-			},
-		);
+		});
 
 		return formatResponse(null, 'Заявка в друзья успешно принята!');
 	}
 
-	async deleteFriend(ownerID: Types.ObjectId, friendID: Types.ObjectId) {
-		await this.checkFriendsEntityAndCreateIfEmpty(ownerID);
-		await this.checkFriendsEntityAndCreateIfEmpty(friendID);
-
-		await this.friendModel.updateOne({ ownerID }, { $pull: { friends: friendID } });
-
-		await this.friendModel.updateOne({ ownerID: friendID }, { $pull: { friends: ownerID } });
-
-		// TODO эта ошибка никогда не выбрасывается, разобраться
-		// if (!result.modifiedCount) {
-		// 	throw new BadRequestException('Такой пользователь не найден среди ваших друзей');
-		// }
+	async deleteFriend(userID: string, friendID: string) {
+		await this.prisma.friends.deleteMany({
+			where: {
+				OR: [
+					{ AND: [{ senderUserID: userID }, { accepterUserID: friendID }] },
+					{ AND: [{ senderUserID: friendID }, { accepterUserID: userID }] },
+				],
+			},
+		});
 
 		return formatResponse(null, 'Друг успешно удален');
 	}
 
-	async declineFriendsRequest(recipientID: Types.ObjectId, senderID: Types.ObjectId) {
-		await this.checkFriendsEntityAndCreateIfEmpty(recipientID);
-		await this.checkFriendsEntityAndCreateIfEmpty(senderID);
-
-		await this.friendModel.updateOne(
-			{ ownerID: recipientID },
-			{ $pull: { incomingRequestsUserIDs: senderID } },
-		);
-
-		await this.friendModel.updateOne(
-			{ ownerID: senderID },
-			{ $pull: { outgoingRequestsUserIDs: recipientID } },
-		);
+	async declineFriendsRequest(toUserID: string, fromUserID: string) {
+		await this.prisma.friendRequest.deleteMany({
+			where: {
+				OR: [
+					{ AND: [{ fromUserID }, { toUserID }] },
+					{ AND: [{ fromUserID: toUserID }, { toUserID: fromUserID }] },
+				],
+			},
+		});
 
 		return formatResponse(null, 'Запрос успешно отклонен');
 	}

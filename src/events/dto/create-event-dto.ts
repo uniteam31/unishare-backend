@@ -4,7 +4,7 @@ export class CreateEventDto {
 	/** Simple event */
 	@IsOptional()
 	@Length(1, 32, { message: 'Название должно быть от 2 до 32 символов' })
-	readonly title?: string;
+	readonly title: string;
 
 	@IsString({ message: 'Поле startTime должно быть строкой' })
 	@IsISO8601(
@@ -31,7 +31,7 @@ export class CreateEventDto {
 	readonly interval?: number;
 
 	@IsOptional()
-	readonly period?: 'day' | 'week' | 'month' | 'year';
+	readonly period?: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR';
 
 	@IsOptional()
 	readonly days?: number[];

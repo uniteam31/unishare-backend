@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { EventsService } from './events.service';
-import { MongooseModule } from '@nestjs/mongoose';
-import { Event, EventSchema } from './event.schema';
+import { PrismaService } from '../prisma.service';
+import { EventsController } from './events.controller';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-	controllers: [],
-	providers: [EventsService],
-	imports: [MongooseModule.forFeature([{ name: Event.name, schema: EventSchema }])],
+	controllers: [EventsController],
+	providers: [EventsService, PrismaService],
 	exports: [EventsService],
+	imports: [AuthModule],
 })
 export class EventsModule {}
