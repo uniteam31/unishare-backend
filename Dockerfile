@@ -27,8 +27,9 @@ RUN git checkout ${BRANCH}
 RUN yarn install
 
 # PRISMA SETUP
-COPY prisma ./prisma
 RUN npx prisma generate
+
+COPY prisma ./prisma
 
 RUN yarn build
 
