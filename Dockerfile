@@ -25,19 +25,15 @@ RUN git checkout ${BRANCH}
 
 # INSTALL DEPS
 RUN yarn install
-
-# PRISMA SETUP
-# RUN npx prisma generate
-
 RUN yarn build
 
 WORKDIR /unishare-backend/dist
 
 EXPOSE 8000
 
+# MIGRATIONS
 COPY prisma /unishare-backend/dist
 COPY start.sh /unishare-backend/dist/start.sh
 RUN chmod +x /unishare-backend/dist/start.sh
 
-# Запуск приложения через скрипт
 CMD ["./start.sh"]
