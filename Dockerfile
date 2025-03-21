@@ -27,9 +27,9 @@ RUN git checkout ${BRANCH}
 RUN yarn install
 
 # PRISMA SETUP
-RUN npx prisma generate
+# RUN npx prisma generate
 
-COPY prisma ./prisma
+COPY prisma /unishare-backend/dist
 
 RUN yarn build
 
