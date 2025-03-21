@@ -37,6 +37,7 @@ EXPOSE 8000
 
 COPY prisma /unishare-backend/dist
 COPY start.sh /unishare-backend/dist/start.sh
+RUN chmod +x /unishare-backend/dist/start.sh
 
 # Запуск приложения через скрипт
 CMD ["./start.sh"]
