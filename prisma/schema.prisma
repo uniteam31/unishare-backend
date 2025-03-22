@@ -18,6 +18,8 @@ model User {
   lastName         String?
   avatar           String? @default("https://avatars.mds.yandex.net/i?id=29f7366ac823f46165612d9480e60f0e_l-13215132-images-thumbs&n=13")
 
+  serviceInfo UserServiceInfo?
+
   friends    User[] @relation("UserFriends")
   friendsIDs User[] @relation("UserFriends")
 
@@ -33,6 +35,15 @@ model User {
   ownnedCalendarEvents CalendarEvent[]
 
   @@map("users")
+}
+
+model UserServiceInfo {
+  user     User    @relation(fields: [userID], references: [id])
+  userID   String
+  isInited Boolean @default(false)
+
+  @@id([userID])
+  @@map("user_service_info")
 }
 
 model FriendRequest {

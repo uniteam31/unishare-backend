@@ -127,17 +127,18 @@ export class FriendsService {
 			throw new BadRequestException('Заявка на добавление в друзья не найдена');
 		}
 
-		await this.prisma.friends.create({
-			data: { senderUserID: fromUserID, accepterUserID: toUserID },
-		});
+		if (request.fromUserID !== fromUserID || request.toUserID !== toUserID) {
+			throw new BadRequestException('Вы не можете принять эту заявку');
+		}
 
 		await this.prisma.friendRequest.deleteMany({
 			where: {
-				OR: [
-					{ AND: [{ fromUserID }, { toUserID }] },
-					{ AND: [{ fromUserID: toUserID }, { toUserID: fromUserID }] },
-				],
+				OR: [{ AND: [{ fromUserID }, { toUserID }] }],
 			},
+		});
+
+		await this.prisma.friends.create({
+			data: { senderUserID: fromUserID, accepterUserID: toUserID },
 		});
 
 		return formatResponse(null, 'Заявка в друзья успешно принята!');

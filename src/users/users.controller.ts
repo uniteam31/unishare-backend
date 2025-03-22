@@ -103,6 +103,7 @@ export class UsersController {
 		return formatResponse(updatedPersonaData, 'Данные успешно обновлены');
 	}
 
+	// TODO: move to spaces controller?
 	@Get('spaces')
 	async getUserSpaces(@Request() req: IAuthenticatedRequest) {
 		const userID = req.user.id;

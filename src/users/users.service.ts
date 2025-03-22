@@ -11,7 +11,7 @@ import { UpdateUserPersonalDataDto } from './dto/update-user-personal-data-dto';
 import { UpdateUserAuthenticationDataDto } from './dto/update-user-authentication-data-dto';
 import { SpacesService } from '../spaces/spaces.service';
 import { PrismaService } from '../prisma.service';
-import { Space, User } from '@prisma/client';
+import { Space, User, UserServiceInfo } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -37,14 +37,8 @@ export class UsersService {
 			},
 		});
 
-		/** У каждого пользователя при регистрации создается личное пространство под его именем */
-		await this.prisma.space.create({
-			data: {
-				name: createdUser.username,
-				ownerID: createdUser.id,
-				type: 'PERSONAL',
-				members: { create: { userID: createdUser.id } },
-			},
+		await this.prisma.userServiceInfo.create({
+			data: { user: { connect: { id: createdUser.id } }, isInited: false },
 		});
 
 		return createdUser;
@@ -62,10 +56,12 @@ export class UsersService {
 		return this.prisma.user.findFirst({ where: { id } });
 	}
 
-	async getUserPersonalSpace(id: string): Promise<Space> {
-		return this.prisma.space.findFirst({
-			where: { ownerID: id, type: 'PERSONAL' },
-		});
+	async getUserServiceInfo(id: string) {
+		return this.prisma.userServiceInfo.findFirst({ where: { userID: id } });
+	}
+
+	async updateUserServiceInfo(userID: string, userData: Partial<UserServiceInfo>) {
+		return this.prisma.userServiceInfo.update({ where: { userID }, data: userData });
 	}
 
 	async getUserSpacesIDs(id: string) {
@@ -77,9 +73,30 @@ export class UsersService {
 	}
 
 	async getUserSpaces(id: string) {
-		return this.prisma.space.findMany({
+		const spaces = await this.prisma.space.findMany({
 			where: { OR: [{ ownerID: id }, { members: { some: { userID: id } } }] },
+			include: {
+				members: {
+					include: {
+						user: {
+							select: {
+								id: true,
+								username: true,
+								firstName: true,
+								lastName: true,
+								avatar: true,
+							},
+						},
+					},
+				},
+			},
 		});
+
+		/** Поднимаю пользователя из ответа на уровень выше и убираю лишние поля, теперь в members лежит просто массив пользователей */
+		return spaces.map((space) => ({
+			...space,
+			members: [...space.members.map((member) => member.user)],
+		}));
 	}
 
 	// TODO: refactoring

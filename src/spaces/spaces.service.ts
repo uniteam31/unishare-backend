@@ -14,6 +14,7 @@ export class SpacesService {
 
 	async createSpace(userID: string, body: CreateSpaceDto) {
 		const creatorFriends = await this.friendsService.getUserFriendsIDs(userID);
+		const creatorServiceInfo = await this.usersService.getUserServiceInfo(userID);
 
 		// Преобразуем friends в Set строк
 		const friendsSet = new Set(creatorFriends.map((friend) => friend.toString()));
@@ -25,6 +26,9 @@ export class SpacesService {
 				);
 			}
 		}
+
+		/** Добавляем самого себя в участники */
+		body.membersIDs.push(userID);
 
 		const createdSpace = await this.prisma.space.create({
 			data: {
@@ -39,6 +43,15 @@ export class SpacesService {
 			},
 		});
 
+		/** При создании первого пространства пользователь будет инициализирован */
+		if (!creatorServiceInfo.isInited) {
+			await this.usersService.updateUserServiceInfo(userID, { isInited: true });
+		}
+
 		return createdSpace;
+	}
+
+	async getCurrentSpaceInfo(spaceID: string) {
+		return this.prisma.space.findFirst({ where: { id: spaceID } });
 	}
 }
