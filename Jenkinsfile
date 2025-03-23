@@ -79,6 +79,7 @@ pipeline {
                     echo "Cleaning up Docker image ${DOCKER_IMAGE_NAME}"
                     sh "docker rmi ${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER} || true"
                     sh "docker rmi ${DOCKER_IMAGE_NAME}:latest || true"
+                    sh "docker system prune --all"
                 }
             }
 
