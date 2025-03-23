@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SpacesService } from './spaces.service';
 import { IAuthenticatedRequest } from '../auth/types/authenticated-request.interface';
@@ -28,5 +28,19 @@ export class SpacesController {
 		const spaceInfo = await this.spacesService.getCurrentSpaceInfo(currentSpaceID);
 
 		return formatResponse(spaceInfo, 'Информация о пространстве получена');
+	}
+
+	@UseGuards(SpaceAccessGuard)
+	@Delete('members/:id')
+	async deleteMemberFromCurrentSpace(
+		@Request() req: IAuthenticatedRequest,
+		@Param('id') userID: string,
+	) {
+		const currentSpaceID = req.currentSpaceID;
+		const initiatorID = req.user.id;
+
+		await this.spacesService.deleteMemberFromCurrentSpace(currentSpaceID, initiatorID, userID);
+
+		return formatResponse(null, 'Пользователь успешно удален');
 	}
 }
