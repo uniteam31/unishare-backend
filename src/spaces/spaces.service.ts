@@ -110,4 +110,8 @@ export class SpacesService {
 
 		return deletedMember;
 	}
+
+	async leaveFromCurrentSpace(spaceID: string, userID: string) {
+		await this.prisma.spaceMember.delete({ where: { userID_spaceID: { userID, spaceID } } });
+	}
 }

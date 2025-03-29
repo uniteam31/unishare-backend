@@ -43,4 +43,15 @@ export class SpacesController {
 
 		return formatResponse(null, 'Пользователь успешно удален');
 	}
+
+	@UseGuards(SpaceAccessGuard)
+	@Post('leave')
+	async leaveFromCurrentSpace(@Request() req: IAuthenticatedRequest) {
+		const currentSpaceID = req.currentSpaceID;
+		const userID = req.user.id;
+
+		await this.spacesService.leaveFromCurrentSpace(currentSpaceID, userID);
+
+		return formatResponse(null, 'Вы вышли из пространства');
+	}
 }

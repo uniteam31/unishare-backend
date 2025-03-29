@@ -74,7 +74,7 @@ export class UsersService {
 
 	async getUserSpaces(id: string) {
 		const spaces = await this.prisma.space.findMany({
-			where: { OR: [{ ownerID: id }, { members: { some: { userID: id } } }] },
+			where: { members: { some: { userID: id } } },
 			include: {
 				members: {
 					include: {
