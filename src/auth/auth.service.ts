@@ -11,7 +11,7 @@ import { User, Space } from '@prisma/client';
 type TUserInitialData = {
 	firstName: User['firstName'];
 	username: User['username'];
-	personalSpaceID: Space['id'];
+	isInited: boolean;
 };
 
 @Injectable()
@@ -23,17 +23,17 @@ export class AuthService {
 
 	async init(userID: string): Promise<ApiResponse<TUserInitialData>> {
 		const user = await this.usersService.getUserByID(userID);
-		const personalSpace = await this.usersService.getUserPersonalSpace(userID);
+		const userServiceInfo = await this.usersService.getUserServiceInfo(userID);
+
 		const userSpacesIDs = await this.usersService.getUserSpacesIDs(userID);
 
-		// TODO cделать populate по spacesIDs
 		return formatResponse(
 			{
 				id: userID,
 				username: user.username,
 				firstName: user.firstName,
 				avatar: user.avatar,
-				personalSpaceID: personalSpace.id,
+				isInited: userServiceInfo?.isInited,
 				spacesIDs: userSpacesIDs,
 			},
 			'Пользователь инициализирован',
