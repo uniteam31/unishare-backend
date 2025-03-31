@@ -1,11 +1,15 @@
 import {
 	Body,
 	Controller,
+	FileTypeValidator,
 	Get,
+	ParseFilePipe,
 	Put,
 	Query,
 	Request,
+	UploadedFile,
 	UseGuards,
+	UseInterceptors,
 	UsePipes,
 	ValidationPipe,
 } from '@nestjs/common';
@@ -17,6 +21,11 @@ import { UpdateUserPersonalDataDto } from './dto/update-user-personal-data-dto';
 import { UpdateUserAuthenticationDataDto } from './dto/update-user-authentication-data-dto';
 import { plainToInstance } from 'class-transformer';
 import { PublicFriendDto } from '../friends/dto/public-friend-dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { GetUserPersonalDataDto } from './dto/get-user-personal-data-dto';
+import { GetUserAuthenticationDataDto } from './dto/get-user-authentication-data-dto';
+
+const REGEX_CORRECT_IMG_TYPES = /(gif|jpe?g|tiff?|png|webp|bmp)$/i;
 
 @UseGuards(JwtAuthGuard)
 @Controller('users')
@@ -46,7 +55,7 @@ export class UsersController {
 		const personalData = await this.usersService.getUserByID(userID);
 
 		return formatResponse(
-			plainToInstance(UpdateUserPersonalDataDto, personalData, {
+			plainToInstance(GetUserPersonalDataDto, personalData, {
 				excludeExtraneousValues: true,
 			}),
 			'Данные успешно получены',
@@ -74,6 +83,29 @@ export class UsersController {
 		);
 	}
 
+	@Put('personalData/avatar')
+	@UseInterceptors(FileInterceptor('avatar')) //
+	async updateUserAvatar(
+		@UploadedFile(
+			new ParseFilePipe({
+				validators: [
+					new FileTypeValidator({
+						// TODO: приходит непонятная ошибка валидации
+						fileType: REGEX_CORRECT_IMG_TYPES,
+					}),
+				],
+			}),
+		)
+		avatar: Express.Multer.File,
+		@Request() req: IAuthenticatedRequest,
+	) {
+		const userID = req.user.id;
+
+		const updatedData = await this.usersService.updateUserAvatar(userID, avatar);
+
+		return formatResponse(updatedData, 'Данные успешно обновлены');
+	}
+
 	@Get('authenticationData')
 	async getUserAuthenticationData(@Request() req: IAuthenticatedRequest) {
 		const userID = req.user.id;
@@ -81,7 +113,7 @@ export class UsersController {
 		const authenticationData = await this.usersService.getUserByID(userID);
 
 		return formatResponse(
-			plainToInstance(UpdateUserAuthenticationDataDto, authenticationData, {
+			plainToInstance(GetUserAuthenticationDataDto, authenticationData, {
 				excludeExtraneousValues: true,
 			}),
 			'Данные успешно получены',
