@@ -1,10 +1,22 @@
-import { Body, Controller, Delete, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	Param,
+	Post,
+	Put,
+	Request,
+	UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SpacesService } from './spaces.service';
 import { IAuthenticatedRequest } from '../auth/types/authenticated-request.interface';
 import { formatResponse } from '../common/utils/response.util';
 import { CreateSpaceDto } from './dto/create-space-dto';
 import { SpaceAccessGuard } from './space-access.guard';
+import { plainToInstance } from 'class-transformer';
+import { PublicUserDto } from '../users/dto/public-user-dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('spaces')
@@ -42,6 +54,27 @@ export class SpacesController {
 		await this.spacesService.deleteMemberFromCurrentSpace(currentSpaceID, initiatorID, userID);
 
 		return formatResponse(null, 'Пользователь успешно удален');
+	}
+
+	@UseGuards(SpaceAccessGuard)
+	@Put('members/:id')
+	async addMemberToCurrentSpace(
+		@Request() req: IAuthenticatedRequest,
+		@Param('id') userID: string,
+	) {
+		const currentSpaceID = req.currentSpaceID;
+		const initiatorID = req.user.id;
+
+		const addedMember = await this.spacesService.addMemberToCurrentSpace(
+			currentSpaceID,
+			initiatorID,
+			userID,
+		);
+
+		return formatResponse(
+			plainToInstance(PublicUserDto, addedMember, { excludeExtraneousValues: true }),
+			'Пользователь успешно добавлен',
+		);
 	}
 
 	@UseGuards(SpaceAccessGuard)

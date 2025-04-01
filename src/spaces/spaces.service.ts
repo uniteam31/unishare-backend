@@ -95,7 +95,7 @@ export class SpacesService {
 			throw new BadRequestException('Вы не можете удалить самого себя');
 		}
 
-		// TODO: в будущем проверять по редакторам
+		// TODO: в будущем написать отдельный guard на проверку прав
 		if (currentSpace.ownerID !== initiatorID) {
 			throw new ForbiddenException('У вас недостаточно прав для удаления участника');
 		}
@@ -109,6 +109,32 @@ export class SpacesService {
 		});
 
 		return deletedMember;
+	}
+
+	async addMemberToCurrentSpace(spaceID: string, initiatorID: string, userID: string) {
+		const currentSpace = await this.getCurrentSpaceInfo(spaceID);
+
+		// TODO: в будущем написать отдельный guard на проверку прав
+		if (currentSpace.ownerID !== initiatorID) {
+			throw new ForbiddenException('У вас нет прав для добавления участников');
+		}
+
+		const candidateMember = await this.prisma.spaceMember.findFirst({
+			where: { userID, spaceID },
+		});
+
+		if (candidateMember) {
+			throw new BadRequestException('Пользователь уже находится в данном пространстве');
+		}
+
+		await this.prisma.space.update({
+			where: { id: spaceID },
+			data: { members: { create: { userID } } },
+		});
+
+		const addedMember = await this.prisma.user.findFirst({ where: { id: userID } });
+
+		return addedMember;
 	}
 
 	async leaveFromCurrentSpace(spaceID: string, userID: string) {
