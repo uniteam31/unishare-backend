@@ -9,6 +9,7 @@ import { SpacesModule } from './spaces/spaces.module';
 import * as process from 'node:process';
 import { PrismaService } from './prisma.service';
 import { S3Module } from 'nestjs-s3';
+import { FilesModule } from './files/files.module';
 
 @Module({
 	controllers: [],
@@ -34,6 +35,7 @@ import { S3Module } from 'nestjs-s3';
 		FriendsModule,
 		SpacesModule,
 		EventsModule,
+		FilesModule,
 	],
 })
 export class AppModule {}

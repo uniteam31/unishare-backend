@@ -84,7 +84,7 @@ export class UsersController {
 	}
 
 	@Put('personalData/avatar')
-	@UseInterceptors(FileInterceptor('avatar')) //
+	@UseInterceptors(FileInterceptor('avatar'))
 	async updateUserAvatar(
 		@UploadedFile(
 			new ParseFilePipe({
