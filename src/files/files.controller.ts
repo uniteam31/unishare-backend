@@ -1,17 +1,6 @@
-import {
-	Body,
-	Controller,
-	Get,
-	Post,
-	Put,
-	Request,
-	UploadedFile,
-	UseGuards,
-	UseInterceptors,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { IAuthenticatedRequest } from '../auth/types/authenticated-request.interface';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesService } from './files.service';
 import { formatResponse } from '../common/utils/response.util';
 import { SpaceAccessGuard } from '../spaces/space-access.guard';
@@ -25,24 +14,20 @@ export class FilesController {
 	constructor(private filesService: FilesService) {}
 
 	@Post()
-	@UseInterceptors(FileInterceptor('file'))
-	async uploadFileToSpace(
-		@UploadedFile()
-		file: Express.Multer.File,
+	async getSignedPutFileUrl(
 		@Body() uploadFileDto: UploadFileDto,
 		@Request() req: IAuthenticatedRequest,
 	) {
 		const userID = req.user.id;
 		const currentSpaceID = req.currentSpaceID;
 
-		const uploadedFile = await this.filesService.uploadFileToSpace(
+		const signedPutFileUrl = await this.filesService.getSignedPutFileUrl(
 			userID,
 			currentSpaceID,
-			file,
 			uploadFileDto,
 		);
 
-		return formatResponse(uploadedFile, 'Файл успешно загружен');
+		return formatResponse(signedPutFileUrl, '');
 	}
 
 	@Get()

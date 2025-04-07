@@ -1,11 +1,13 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { InjectS3, S3 } from 'nestjs-s3';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { PrismaService } from '../prisma.service';
 import { Prisma } from '@prisma/client';
 import { CreateFolderDto } from './dto/create-folder-dto';
 import { UploadFileDto } from './dto/upload-file-dto';
 import { UpdateFileParentDto } from './dto/update-file-parent-dto';
+import { AwsS3Service } from '../aws-s3/aws-s3.service';
 
 // TODO: вынести в глобальные константы
 const S3_SERVICE_ADDRESS = 'https://47c4ee93-f8a4-40fa-a785-9fdb4b1678f9.selstorage.ru';
@@ -14,45 +16,38 @@ const S3_BUCKET_NAME = 'unishare';
 @Injectable()
 export class FilesService {
 	constructor(
-		@InjectS3() private readonly s3: S3,
+		private awsS3Service: AwsS3Service,
 		private prisma: PrismaService,
 	) {}
 
-	async uploadFileToSpace(
-		userID: string,
-		spaceID: string,
-		file: Express.Multer.File,
-		updateFileDto: UploadFileDto,
-	) {
-		const filename = await bcrypt
-			.hash(file.originalname, 2)
-			.then((hash) => hash + '_' + file.originalname);
+	async getSignedPutFileUrl(userID: string, spaceID: string, uploadFileDto: UploadFileDto) {
+		const { name, type, parentID } = uploadFileDto;
 
+		const filename = await bcrypt.hash(name, 2).then((hash) => hash + '_' + name);
 		const filteredFilename = filename.split('/').join('');
 
-		await this.s3.putObject({
+		const command = new PutObjectCommand({
 			Bucket: S3_BUCKET_NAME,
 			Key: filteredFilename,
-			Body: file.buffer,
-			ContentType: file.mimetype,
+			ContentType: type,
 		});
 
 		const data: Prisma.FileCreateInput = {
 			space: { connect: { id: spaceID } },
 			owner: { connect: { id: userID } },
 			name: filename,
-			type: file.mimetype,
+			type: type,
 		};
 
-		if (updateFileDto.parentID) {
-			data.parent = { connect: { id: updateFileDto.parentID } };
+		if (parentID) {
+			data.parent = { connect: { id: parentID } };
 		}
 
 		await this.prisma.file.create({
 			data,
 		});
 
-		return { url: `${S3_SERVICE_ADDRESS}/${filteredFilename}` };
+		return await getSignedUrl(this.awsS3Service.s3Client, command, { expiresIn: 60 });
 	}
 
 	async getFilesFromSpace(spaceID: string) {

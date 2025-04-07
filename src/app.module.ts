@@ -10,6 +10,7 @@ import * as process from 'node:process';
 import { PrismaService } from './prisma.service';
 import { S3Module } from 'nestjs-s3';
 import { FilesModule } from './files/files.module';
+import { AwsS3Module } from './aws-s3/aws-s3.module';
 
 @Module({
 	controllers: [],
@@ -36,6 +37,7 @@ import { FilesModule } from './files/files.module';
 		SpacesModule,
 		EventsModule,
 		FilesModule,
+		AwsS3Module,
 	],
 })
 export class AppModule {}
