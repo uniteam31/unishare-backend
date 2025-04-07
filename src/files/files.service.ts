@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -20,40 +20,86 @@ export class FilesService {
 		private prisma: PrismaService,
 	) {}
 
-	async getSignedPutFileUrl(userID: string, spaceID: string, uploadFileDto: UploadFileDto) {
-		const { name, type, parentID } = uploadFileDto;
+	async getSignedPutUrl(uploadFileDto: UploadFileDto) {
+		const { name, type } = uploadFileDto;
 
-		const filename = await bcrypt.hash(name, 2).then((hash) => hash + '_' + name);
-		const filteredFilename = filename.split('/').join('');
+		const prefixHashedFilename = await bcrypt.hash(name, 2).then((hash) => hash + '_' + name);
+
+		/** Слеш используется для выставления структуры папок в s3, удаляем его из имени файла */
+		const filteredPrefixHashedFilename = prefixHashedFilename.split('/').join('');
 
 		const command = new PutObjectCommand({
 			Bucket: S3_BUCKET_NAME,
-			Key: filteredFilename,
+			Key: filteredPrefixHashedFilename,
 			ContentType: type,
 		});
+
+		const signedUrl = await getSignedUrl(this.awsS3Service.s3Client, command, {
+			expiresIn: 60,
+		});
+
+		return {
+			signedUrl,
+			prefixHashedFilename: filteredPrefixHashedFilename,
+		};
+	}
+
+	/**
+	 * @description Возвращает ссылку на загрузку файла и id из созданной записи в бд
+	 * */
+	async createUploadFileSession(userID: string, spaceID: string, uploadFileDto: UploadFileDto) {
+		const { type, parentID } = uploadFileDto;
+
+		const { signedUrl, prefixHashedFilename } = await this.getSignedPutUrl(uploadFileDto);
 
 		const data: Prisma.FileCreateInput = {
 			space: { connect: { id: spaceID } },
 			owner: { connect: { id: userID } },
-			name: filename,
+			name: prefixHashedFilename,
 			type: type,
+			status: 'PENDING',
 		};
 
 		if (parentID) {
 			data.parent = { connect: { id: parentID } };
 		}
 
-		await this.prisma.file.create({
+		const createdFile = await this.prisma.file.create({
 			data,
 		});
 
-		return await getSignedUrl(this.awsS3Service.s3Client, command, { expiresIn: 60 });
+		return {
+			url: signedUrl,
+			fileID: createdFile.id,
+		};
+	}
+
+	/**
+	 * @description Подтверждает загрузку файла и выставляет статус в UPLOADED
+	 * */
+	async confirmUploadFile(fileID: string) {
+		const updatedFile = await this.prisma.file.findFirst({ where: { id: fileID } });
+
+		if (!updatedFile) {
+			throw new NotFoundException('Такой файл не найден');
+		}
+
+		if (updatedFile.status !== 'PENDING') {
+			throw new BadRequestException('Файл уже загружен');
+		}
+
+		const file = await this.prisma.file.update({
+			where: { id: fileID },
+			data: { status: 'UPLOADED' },
+		});
+
+		return file;
 	}
 
 	async getFilesFromSpace(spaceID: string) {
 		// Retrieve files associated with the space
 		const files = await this.prisma.file.findMany({
-			where: { space: { id: spaceID } },
+			where: { space: { id: spaceID }, OR: [{ status: 'UPLOADED' }, { type: 'folder' }] },
 			orderBy: { name: 'asc' },
 		});
 

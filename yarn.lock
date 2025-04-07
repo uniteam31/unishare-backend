@@ -135,7 +135,7 @@
     "@smithy/util-utf8" "^2.0.0"
     tslib "^2.6.2"
 
-"@aws-sdk/client-s3@^3.782.0":
+"@aws-sdk/client-s3@3.782.0":
   version "3.782.0"
   resolved "https://registry.yarnpkg.com/@aws-sdk/client-s3/-/client-s3-3.782.0.tgz#ed807a1cd9a3e7a55bf41dfb486da0bbd1f4852d"
   integrity sha512-V6JR2JAGYQY7J8wk5un5n/ja2nfCUyyoRCF8Du8JL91NGI8i41Mdr/TzuOGwTgFl6RSXb/ge1K1jk30OH4MugQ==
@@ -538,7 +538,7 @@
     "@smithy/util-middleware" "^4.0.2"
     tslib "^2.6.2"
 
-"@aws-sdk/s3-request-presigner@^3.782.0":
+"@aws-sdk/s3-request-presigner@3.782.0":
   version "3.782.0"
   resolved "https://registry.yarnpkg.com/@aws-sdk/s3-request-presigner/-/s3-request-presigner-3.782.0.tgz#bc71d5b9377f5c9e4170368da56745bb5164e466"
   integrity sha512-Er8hdjc9zkxTh15MjdnMYggtUrGknDiuD1FwdW035kn/kwWop587G9rnRa1crhmyKRjLMn0Ki3fsyFUm/943XA==
@@ -2116,7 +2116,7 @@
   dependencies:
     "@babel/types" "^7.20.7"
 
-"@types/bcrypt@^5.0.2":
+"@types/bcrypt@5.0.2":
   version "5.0.2"
   resolved "https://registry.yarnpkg.com/@types/bcrypt/-/bcrypt-5.0.2.tgz#22fddc11945ea4fbc3655b3e8b8847cc9f811477"
   integrity sha512-6atioO8Y75fNcbmj0G7UjI9lXN2pQ/IGJ2FWT4a/btd0Lk9lQalHLKhkgKVZ3r+spnmWUKfbMi1GEe9wyHQfNQ==
@@ -5418,11 +5418,6 @@ neo-async@^2.6.2:
   version "2.6.2"
   resolved "https://registry.yarnpkg.com/neo-async/-/neo-async-2.6.2.tgz#b4aafb93e3aeb2d8174ca53cf163ab7d7308305f"
   integrity sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==
-
-nestjs-s3@2.0.1:
-  version "2.0.1"
-  resolved "https://registry.yarnpkg.com/nestjs-s3/-/nestjs-s3-2.0.1.tgz#bc9bc67f87d97a785295ebbed1da410ff4636756"
-  integrity sha512-nnSzBPDXKFWH4nLR8qur5SUHFhlW2embwze7efUtNi5r+0VzAWT/rY0TiMhvMTZUiEJhBdYf+tvYU4ja2C0UTg==
 
 node-abort-controller@^3.0.1:
   version "3.1.1"

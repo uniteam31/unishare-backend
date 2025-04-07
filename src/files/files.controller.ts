@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Put, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { IAuthenticatedRequest } from '../auth/types/authenticated-request.interface';
 import { FilesService } from './files.service';
@@ -14,20 +14,27 @@ export class FilesController {
 	constructor(private filesService: FilesService) {}
 
 	@Post()
-	async getSignedPutFileUrl(
+	async createUploadFileSession(
 		@Body() uploadFileDto: UploadFileDto,
 		@Request() req: IAuthenticatedRequest,
 	) {
 		const userID = req.user.id;
 		const currentSpaceID = req.currentSpaceID;
 
-		const signedPutFileUrl = await this.filesService.getSignedPutFileUrl(
+		const fileSession = await this.filesService.createUploadFileSession(
 			userID,
 			currentSpaceID,
 			uploadFileDto,
 		);
 
-		return formatResponse(signedPutFileUrl, '');
+		return formatResponse(fileSession, '');
+	}
+
+	@Post('confirm/:fileID')
+	async confirmUploadFile(@Param('fileID') fileID: string) {
+		const file = await this.filesService.confirmUploadFile(fileID);
+
+		return formatResponse(file, 'Загрузка подтверждена');
 	}
 
 	@Get()

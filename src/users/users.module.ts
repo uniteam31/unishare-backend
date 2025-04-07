@@ -5,11 +5,17 @@ import { AuthModule } from '../auth/auth.module';
 import { FriendsModule } from '../friends/friends.module';
 import { SpacesModule } from '../spaces/spaces.module';
 import { PrismaService } from '../prisma.service';
+import { FilesModule } from '../files/files.module';
 
 @Module({
 	controllers: [UsersController],
 	providers: [UsersService, PrismaService],
-	imports: [forwardRef(() => AuthModule), FriendsModule, SpacesModule],
+	imports: [
+		forwardRef(() => AuthModule),
+		FriendsModule,
+		SpacesModule,
+		forwardRef(() => FilesModule),
+	],
 	exports: [UsersService],
 })
 export class UsersModule {}

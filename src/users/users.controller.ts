@@ -24,6 +24,7 @@ import { PublicFriendDto } from '../friends/dto/public-friend-dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { GetUserPersonalDataDto } from './dto/get-user-personal-data-dto';
 import { GetUserAuthenticationDataDto } from './dto/get-user-authentication-data-dto';
+import { UploadFileDto } from '../files/dto/upload-file-dto';
 
 const REGEX_CORRECT_IMG_TYPES = /(gif|jpe?g|tiff?|png|webp|bmp)$/i;
 
@@ -83,27 +84,17 @@ export class UsersController {
 		);
 	}
 
+	// TODO: сломал аватарки :) подтверждать загрузку!
 	@Put('personalData/avatar')
-	@UseInterceptors(FileInterceptor('avatar'))
-	async updateUserAvatar(
-		@UploadedFile(
-			new ParseFilePipe({
-				validators: [
-					new FileTypeValidator({
-						// TODO: приходит непонятная ошибка валидации
-						fileType: REGEX_CORRECT_IMG_TYPES,
-					}),
-				],
-			}),
-		)
-		avatar: Express.Multer.File,
+	async createUploadAvatarSession(
 		@Request() req: IAuthenticatedRequest,
+		@Body() uploadFileDto: UploadFileDto,
 	) {
 		const userID = req.user.id;
 
-		const updatedData = await this.usersService.updateUserAvatar(userID, avatar);
+		const signedUrl = await this.usersService.createUploadAvatarSession(userID, uploadFileDto);
 
-		return formatResponse(updatedData, 'Данные успешно обновлены');
+		return formatResponse(signedUrl, '');
 	}
 
 	@Get('authenticationData')

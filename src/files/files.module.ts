@@ -9,6 +9,11 @@ import { AwsS3Module } from '../aws-s3/aws-s3.module';
 @Module({
 	controllers: [FilesController],
 	providers: [FilesService, PrismaService],
-	imports: [forwardRef(() => AuthModule), UsersModule, AwsS3Module],
+	imports: [
+		forwardRef(() => AuthModule),
+		forwardRef(() => UsersModule),
+		forwardRef(() => AwsS3Module),
+	],
+	exports: [FilesService],
 })
 export class FilesModule {}

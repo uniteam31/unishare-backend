@@ -9,11 +9,10 @@ import { CreateUserDto } from './dto/create-user-dto';
 import { FriendsService } from '../friends/friends.service';
 import { UpdateUserPersonalDataDto } from './dto/update-user-personal-data-dto';
 import { UpdateUserAuthenticationDataDto } from './dto/update-user-authentication-data-dto';
-import { SpacesService } from '../spaces/spaces.service';
 import { PrismaService } from '../prisma.service';
 import { User, UserServiceInfo } from '@prisma/client';
-import { InjectS3, S3 } from 'nestjs-s3';
-import * as bcrypt from 'bcrypt';
+import { FilesService } from '../files/files.service';
+import { UploadFileDto } from '../files/dto/upload-file-dto';
 
 // TODO: вынести в глобальные константы
 const S3_SERVICE_ADDRESS = 'https://47c4ee93-f8a4-40fa-a785-9fdb4b1678f9.selstorage.ru';
@@ -22,9 +21,8 @@ const S3_BUCKET_NAME = 'unishare';
 @Injectable()
 export class UsersService {
 	constructor(
-		@InjectS3() private readonly s3: S3,
 		@Inject(forwardRef(() => FriendsService)) private friendsService: FriendsService,
-		@Inject(forwardRef(() => SpacesService)) private spacesService: SpacesService,
+		@Inject(forwardRef(() => FilesService)) private filesService: FilesService,
 		private prisma: PrismaService,
 	) {}
 
@@ -179,29 +177,18 @@ export class UsersService {
 		return updatedPersonalData;
 	}
 
-	async updateUserAvatar(userID: string, avatar: Express.Multer.File) {
-		const filename = await bcrypt
-			.hash(avatar.originalname, 2)
-			.then((hash) => hash + '_' + avatar.originalname);
+	async createUploadAvatarSession(userID: string, uploadFileDto: UploadFileDto) {
+		const { signedUrl, prefixHashedFilename } = await this.filesService.getSignedPutUrl(
+			uploadFileDto,
+		);
 
-		/** Слеш используется для выставления структуры папок в s3, удаляем его из имени файла */
-		const filteredFilename = filename.split('/').join('');
-
-		await this.s3.putObject({
-			Body: avatar.buffer,
-			Key: filteredFilename,
-			Bucket: S3_BUCKET_NAME,
-			ContentType: avatar.mimetype,
-		});
-
-		const updatedUser = await this.prisma.user.update({
+		// TODO: обновлять аватарку только после подтверждения о загрузке файла в S3
+		await this.prisma.user.update({
 			where: { id: userID },
-			data: { avatar: `${S3_SERVICE_ADDRESS}/${filteredFilename}` },
+			data: { avatar: `${S3_SERVICE_ADDRESS}/${prefixHashedFilename}` },
 		});
 
-		return {
-			avatar: updatedUser.avatar,
-		};
+		return signedUrl;
 	}
 
 	async updateUserAuthenticationData(
