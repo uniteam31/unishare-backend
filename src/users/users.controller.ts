@@ -84,17 +84,27 @@ export class UsersController {
 		);
 	}
 
-	// TODO: сломал аватарки :) подтверждать загрузку!
 	@Put('personalData/avatar')
-	async createUploadAvatarSession(
+	@UseInterceptors(FileInterceptor('avatar')) //
+	async updateUserAvatar(
+		@UploadedFile(
+			new ParseFilePipe({
+				validators: [
+					new FileTypeValidator({
+						// TODO: приходит непонятная ошибка валидации
+						fileType: REGEX_CORRECT_IMG_TYPES,
+					}),
+				],
+			}),
+		)
+		avatar: Express.Multer.File,
 		@Request() req: IAuthenticatedRequest,
-		@Body() uploadFileDto: UploadFileDto,
 	) {
 		const userID = req.user.id;
 
-		const signedUrl = await this.usersService.createUploadAvatarSession(userID, uploadFileDto);
+		const updatedData = await this.usersService.updateUserAvatar(userID, avatar);
 
-		return formatResponse(signedUrl, '');
+		return formatResponse(updatedData, 'Данные успешно обновлены');
 	}
 
 	@Get('authenticationData')

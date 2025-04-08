@@ -6,6 +6,7 @@ import { FriendsModule } from '../friends/friends.module';
 import { SpacesModule } from '../spaces/spaces.module';
 import { PrismaService } from '../prisma.service';
 import { FilesModule } from '../files/files.module';
+import { AwsS3Module } from '../aws-s3/aws-s3.module';
 
 @Module({
 	controllers: [UsersController],
@@ -14,7 +15,7 @@ import { FilesModule } from '../files/files.module';
 		forwardRef(() => AuthModule),
 		FriendsModule,
 		SpacesModule,
-		forwardRef(() => FilesModule),
+		forwardRef(() => AwsS3Module),
 	],
 	exports: [UsersService],
 })

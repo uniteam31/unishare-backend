@@ -11,8 +11,9 @@ import { UpdateUserPersonalDataDto } from './dto/update-user-personal-data-dto';
 import { UpdateUserAuthenticationDataDto } from './dto/update-user-authentication-data-dto';
 import { PrismaService } from '../prisma.service';
 import { User, UserServiceInfo } from '@prisma/client';
-import { FilesService } from '../files/files.service';
-import { UploadFileDto } from '../files/dto/upload-file-dto';
+import * as bcrypt from 'bcrypt';
+import { AwsS3Service } from '../aws-s3/aws-s3.service';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 
 // TODO: вынести в глобальные константы
 const S3_SERVICE_ADDRESS = 'https://47c4ee93-f8a4-40fa-a785-9fdb4b1678f9.selstorage.ru';
@@ -22,7 +23,7 @@ const S3_BUCKET_NAME = 'unishare';
 export class UsersService {
 	constructor(
 		@Inject(forwardRef(() => FriendsService)) private friendsService: FriendsService,
-		@Inject(forwardRef(() => FilesService)) private filesService: FilesService,
+		private awsS3Service: AwsS3Service,
 		private prisma: PrismaService,
 	) {}
 
@@ -177,18 +178,32 @@ export class UsersService {
 		return updatedPersonalData;
 	}
 
-	async createUploadAvatarSession(userID: string, uploadFileDto: UploadFileDto) {
-		const { signedUrl, prefixHashedFilename } = await this.filesService.getSignedPutUrl(
-			uploadFileDto,
-		);
+	// TODO: учитывая новый способ работы с S3 через подписанные ссылки, нужно обновить метод
+	async updateUserAvatar(userID: string, avatar: Express.Multer.File) {
+		const filename = await bcrypt
+			.hash(avatar.originalname, 2)
+			.then((hash) => `${hash}_${avatar.originalname}`);
 
-		// TODO: обновлять аватарку только после подтверждения о загрузке файла в S3
-		await this.prisma.user.update({
-			where: { id: userID },
-			data: { avatar: `${S3_SERVICE_ADDRESS}/${prefixHashedFilename}` },
+		/** Слеш используется для выставления структуры папок в s3, удаляем его из имени файла */
+		const filteredFilename = filename.split('/').join('');
+
+		const command = new PutObjectCommand({
+			Bucket: S3_BUCKET_NAME,
+			Key: filteredFilename,
+			Body: avatar.buffer,
+			ContentType: avatar.mimetype,
 		});
 
-		return signedUrl;
+		await this.awsS3Service.s3Client.send(command);
+
+		const updatedUser = await this.prisma.user.update({
+			where: { id: userID },
+			data: { avatar: `${S3_SERVICE_ADDRESS}/${filteredFilename}` },
+		});
+
+		return {
+			avatar: updatedUser.avatar,
+		};
 	}
 
 	async updateUserAuthenticationData(
