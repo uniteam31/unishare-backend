@@ -16,8 +16,7 @@ model User {
   username         String
   firstName        String?
   lastName         String?
-  avatar           File?   @relation("UserAvatar", fields: [avatarFileID], references: [id])
-  avatarFileID     String? @unique
+  avatar String? @default("https://avatars.mds.yandex.net/i?id=29f7366ac823f46165612d9480e60f0e_l-13215132-images-thumbs&n=13")
 
   serviceInfo UserServiceInfo?
 
@@ -160,8 +159,6 @@ model File {
 
   owner   User   @relation("FileOwner", fields: [ownerID], references: [id])
   ownerID String
-
-  userAvatar User? @relation("UserAvatar")
 
   space   Space  @relation("FileSpace", fields: [spaceID], references: [id])
   spaceID String
