@@ -9,11 +9,11 @@ import { CreateUserDto } from './dto/create-user-dto';
 import { FriendsService } from '../friends/friends.service';
 import { UpdateUserPersonalDataDto } from './dto/update-user-personal-data-dto';
 import { UpdateUserAuthenticationDataDto } from './dto/update-user-authentication-data-dto';
-import { SpacesService } from '../spaces/spaces.service';
 import { PrismaService } from '../prisma.service';
 import { User, UserServiceInfo } from '@prisma/client';
-import { InjectS3, S3 } from 'nestjs-s3';
 import * as bcrypt from 'bcrypt';
+import { AwsS3Service } from '../aws-s3/aws-s3.service';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 
 // TODO: вынести в глобальные константы
 const S3_SERVICE_ADDRESS = 'https://47c4ee93-f8a4-40fa-a785-9fdb4b1678f9.selstorage.ru';
@@ -22,9 +22,8 @@ const S3_BUCKET_NAME = 'unishare';
 @Injectable()
 export class UsersService {
 	constructor(
-		@InjectS3() private readonly s3: S3,
 		@Inject(forwardRef(() => FriendsService)) private friendsService: FriendsService,
-		@Inject(forwardRef(() => SpacesService)) private spacesService: SpacesService,
+		private awsS3Service: AwsS3Service,
 		private prisma: PrismaService,
 	) {}
 
@@ -179,20 +178,23 @@ export class UsersService {
 		return updatedPersonalData;
 	}
 
+	// TODO: учитывая новый способ работы с S3 через подписанные ссылки, нужно обновить метод
 	async updateUserAvatar(userID: string, avatar: Express.Multer.File) {
 		const filename = await bcrypt
 			.hash(avatar.originalname, 2)
-			.then((hash) => hash + '_' + avatar.originalname);
+			.then((hash) => `${hash}_${avatar.originalname}`);
 
 		/** Слеш используется для выставления структуры папок в s3, удаляем его из имени файла */
 		const filteredFilename = filename.split('/').join('');
 
-		await this.s3.putObject({
-			Body: avatar.buffer,
-			Key: filteredFilename,
+		const command = new PutObjectCommand({
 			Bucket: S3_BUCKET_NAME,
+			Key: filteredFilename,
+			Body: avatar.buffer,
 			ContentType: avatar.mimetype,
 		});
+
+		await this.awsS3Service.s3Client.send(command);
 
 		const updatedUser = await this.prisma.user.update({
 			where: { id: userID },

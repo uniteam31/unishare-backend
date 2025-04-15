@@ -24,6 +24,7 @@ import { PublicFriendDto } from '../friends/dto/public-friend-dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { GetUserPersonalDataDto } from './dto/get-user-personal-data-dto';
 import { GetUserAuthenticationDataDto } from './dto/get-user-authentication-data-dto';
+import { UploadFileDto } from '../files/dto/upload-file-dto';
 
 const REGEX_CORRECT_IMG_TYPES = /(gif|jpe?g|tiff?|png|webp|bmp)$/i;
 
