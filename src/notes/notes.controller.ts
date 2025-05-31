@@ -13,43 +13,44 @@ import { NotesService } from './notes.service';
 import { CreateNoteDto } from './dto/create-note-dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { IAuthenticatedRequest } from '../auth/types/authenticated-request.interface';
-import { Types } from 'mongoose';
 import { UpdateNoteDto } from './dto/update-note-dto';
+import { SpaceAccessGuard } from '../spaces/space-access.guard';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, SpaceAccessGuard)
 @Controller('notes')
 export class NotesController {
 	constructor(private notesService: NotesService) {}
 
 	@Post()
 	createNote(@Body() createNoteDto: CreateNoteDto, @Request() req: IAuthenticatedRequest) {
-		const ownerID = req.user._id;
+		const currentSpace = req.currentSpaceID;
+		const ownerID = req.user.id;
 
-		return this.notesService.createNote(createNoteDto, ownerID);
+		return this.notesService.createNote(createNoteDto, ownerID, currentSpace);
 	}
 
 	@Get()
-	getUserNotes(@Request() req: IAuthenticatedRequest) {
-		const ownerID = req.user._id;
+	getSpaceNotes(@Request() req: IAuthenticatedRequest) {
+		const currentSpaceID = req.currentSpaceID;
 
-		return this.notesService.getUserNotes(ownerID);
+		return this.notesService.getSpaceNotes(currentSpaceID);
 	}
 
 	@Put(':id')
-	updateUserNote(
-		@Param('id') noteID: Types.ObjectId,
+	updateSpaceNote(
+		@Param('id') noteID: string,
 		@Body() updateNoteDto: UpdateNoteDto,
 		@Request() req: IAuthenticatedRequest,
 	) {
-		const ownerID = req.user._id;
+		const ownerID = req.user.id;
 
-		return this.notesService.updateUserNote(noteID, ownerID, updateNoteDto);
+		return this.notesService.updateSpaceNote(noteID, ownerID, updateNoteDto);
 	}
 
 	@Delete(':id')
-	deleteUserNote(@Param('id') noteID: Types.ObjectId, @Request() req: IAuthenticatedRequest) {
-		const ownerID = req.user._id;
+	deleteSpaceNote(@Param('id') noteID: string, @Request() req: IAuthenticatedRequest) {
+		const ownerID = req.user.id;
 
-		return this.notesService.deleteUserNote(noteID, ownerID);
+		return this.notesService.deleteSpaceNote(noteID, ownerID);
 	}
 }

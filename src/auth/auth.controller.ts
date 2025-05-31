@@ -12,7 +12,7 @@ export class AuthController {
 	@UseGuards(JwtAuthGuard)
 	@Get()
 	init(@Request() req: IAuthenticatedRequest) {
-		const userID = req.user._id;
+		const userID = req.user.id;
 		return this.authService.init(userID);
 	}
 

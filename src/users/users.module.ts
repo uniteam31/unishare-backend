@@ -1,17 +1,21 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
-import { MongooseModule } from '@nestjs/mongoose';
-import { User, UserSchema } from './user.schema';
 import { AuthModule } from '../auth/auth.module';
+import { FriendsModule } from '../friends/friends.module';
+import { SpacesModule } from '../spaces/spaces.module';
+import { PrismaService } from '../prisma.service';
+import { FilesModule } from '../files/files.module';
+import { AwsS3Module } from '../aws-s3/aws-s3.module';
 
 @Module({
 	controllers: [UsersController],
-	providers: [UsersService],
+	providers: [UsersService, PrismaService],
 	imports: [
-		/** Регистрация схемы в NestJS и связывание с MongoDB */
-		MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
 		forwardRef(() => AuthModule),
+		FriendsModule,
+		SpacesModule,
+		forwardRef(() => AwsS3Module),
 	],
 	exports: [UsersService],
 })

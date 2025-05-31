@@ -1,20 +1,18 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UsersService } from '../users/users.service';
 import { TJwtPayload } from './types/auth.types';
 
-/** Если возвращает false, то доступ запрещен, иначе разрешен */
+/** Если возвращает false, то доступ запрещен, иначе разрешен и выставляет в req информацию о пользователе и пространствах */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-	constructor(
-		private jwtService: JwtService,
-		private userService: UsersService,
-	) {}
+	constructor(private jwtService: JwtService) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
 		const req = context.switchToHttp().getRequest();
+
 		try {
 			const authHeader = req.headers.authorization;
+
 			const bearer = authHeader.split(' ')[0];
 			const token = authHeader.split(' ')[1];
 
@@ -27,6 +25,11 @@ export class JwtAuthGuard implements CanActivate {
 
 			/** Кладу информацию для работы с endpoints в поле user */
 			req.user = decodedToken;
+
+			/** Получаю информацию о текущем пространстве из куки */
+			// TODO сделать импорт из shared-toolkit
+			const currentSpaceID = req.cookies['currentSpaceID'];
+			req.currentSpaceID = currentSpaceID;
 
 			return true;
 		} catch (e) {

@@ -1,4 +1,4 @@
-FROM node
+FROM --platform=linux/amd64 node:22
 
 # При деплое ОБЯЗАТЕЛЬНО указывать все ENV через Jenkins
 # Ставится в pipeline на Jenkins
@@ -31,4 +31,9 @@ WORKDIR /unishare-backend/dist
 
 EXPOSE 8000
 
-CMD ["node", "main.js"]
+# MIGRATIONS
+COPY prisma /unishare-backend/dist
+COPY start.sh /unishare-backend/dist/start.sh
+RUN chmod +x /unishare-backend/dist/start.sh
+
+CMD ["./start.sh"]

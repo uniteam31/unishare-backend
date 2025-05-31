@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// TODO: добавить везде createdAt и updatedAt
+model User {
+  id               String  @id @default(uuid())
+  email            String  @unique
+  educationalEmail String? @unique
+  password         String
+  username         String
+  firstName        String?
+  lastName         String?
+  avatar String? @default("https://avatars.mds.yandex.net/i?id=29f7366ac823f46165612d9480e60f0e_l-13215132-images-thumbs&n=13")
+
+  serviceInfo UserServiceInfo?
+
+  friends    User[] @relation("UserFriends")
+  friendsIDs User[] @relation("UserFriends")
+
+  friendRequestsSent     FriendRequest[] @relation("FriendRequestsSent")
+  friendRequestsReceived FriendRequest[] @relation("FriendRequestsReceived")
+
+  friendSender    Friends[] @relation("UserSender")
+  friendsAccepter Friends[] @relation("UserAccepter")
+
+  ownedSpaces          Space[]         @relation("SpaceOwner")
+  memberSpaces         SpaceMember[]
+  ownedNotes           Note[]
+  ownnedCalendarEvents CalendarEvent[]
+  ownedFiles           File[]          @relation("FileOwner")
+
+  @@map("users")
+}
+
+model UserServiceInfo {
+  user     User    @relation(fields: [userID], references: [id])
+  userID   String
+  isInited Boolean @default(false)
+
+  @@id([userID])
+  @@map("user_service_info")
+}
+
+model FriendRequest {
+  fromUser   User                @relation("FriendRequestsSent", fields: [fromUserID], references: [id])
+  fromUserID String
+  toUser     User                @relation("FriendRequestsReceived", fields: [toUserID], references: [id])
+  toUserID   String
+  status     FriendRequestStatus @default(PENDING)
+
+  @@unique([fromUserID, toUserID])
+  @@map("friends_requests")
+}
+
+model Friends {
+  senderUser     User   @relation("UserSender", fields: [senderUserID], references: [id])
+  senderUserID   String
+  accepterUser   User   @relation("UserAccepter", fields: [accepterUserID], references: [id])
+  accepterUserID String
+
+  @@id([senderUserID, accepterUserID])
+  @@map("friends")
+}
+
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model Space {
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  owner       User          @relation("SpaceOwner", fields: [ownerID], references: [id])
+  ownerID     String
+  members     SpaceMember[]
+  type        SpaceType
+
+  ownedNotes  Note[]
+  ownderFiles File[] @relation("FileSpace")
+  // ownedCalendarEvents CalendarEvent[]
+
+  @@map("spaces")
+}
+
+enum SpaceType {
+  PUBLIC
+  PRIVATE
+  PERSONAL
+}
+
+// промежуточная таблица для many to many
+model SpaceMember {
+  user    User   @relation(fields: [userID], references: [id])
+  userID  String
+  space   Space  @relation(fields: [spaceID], references: [id])
+  spaceID String
+
+  @@id([userID, spaceID])
+  @@map("space_members")
+}
+
+model Note {
+  id      String  @id @default(uuid())
+  title   String?
+  text    String?
+  owner   User    @relation(fields: [ownerID], references: [id])
+  ownerID String
+  space   Space   @relation(fields: [spaceID], references: [id])
+  spaceID String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notes")
+}
+
+model CalendarEvent {
+  id String @id @default(uuid())
+
+  title       String
+  startTime   String
+  endTime     String?
+  description String?
+  color       String?
+  interval    Int?
+  period      EventPeriod?
+  days        Int[]
+
+  owner   User   @relation(fields: [ownerID], references: [id])
+  ownerID String
+
+  // space   Space  @relation(fields: [spaceID], references: [id])
+  // spaceID String
+
+  @@map("calendar_events")
+}
+
+enum EventPeriod {
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
+model File {
+  id   String  @id @default(uuid())
+  name String
+  type String?
+
+  status FileStatus?
+
+  owner   User   @relation("FileOwner", fields: [ownerID], references: [id])
+  ownerID String
+
+  space   Space  @relation("FileSpace", fields: [spaceID], references: [id])
+  spaceID String
+
+  parent   File?   @relation("FileChildren", fields: [parentID], references: [id])
+  parentID String?
+  children File[]  @relation("FileChildren")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("files")
+}
+
+enum FileStatus {
+  PENDING
+  UPLOADED
+  DELETED
+}
